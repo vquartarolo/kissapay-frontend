@@ -1,8 +1,15 @@
 import api from "./api";
 
 export async function login(email, password) {
-  const { data } = await api.post("/auth/login", { email, password });
-  return data;
+  try {
+    const { data } = await api.post("/auth/login", { email, password });
+    return data;
+  } catch (err) {
+    // Erro de rede / CORS — sem response do servidor, propaga para o catch do chamador
+    if (!err?.response) throw err;
+    // Erro HTTP (401, 429…) — devolve o body para Login.jsx tratar rateLimited/captchaRequired
+    return err.response.data;
+  }
 }
 
 export async function verify2FALogin(token, code) {

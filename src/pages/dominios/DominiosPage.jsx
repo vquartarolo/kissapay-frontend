@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   Globe, Plus, Copy, Check, RefreshCw, Trash2,
   CheckCircle2, Clock3, AlertCircle, X, ExternalLink,
@@ -6,36 +6,22 @@ import {
 } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import C from "../../constants/colors";
+import {
+  getDomains,
+  createDomain,
+  verifyDomain as verifyDomainApi,
+  deleteDomain as deleteDomainApi,
+} from "../../services/domains.service";
 
-const STORAGE_KEY = "orionpay_domains";
-
-function loadDomains() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveDomains(list) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-}
-
-function generateVerifyToken(domain) {
-  // deterministic token from domain for demo purposes
-  let hash = 0;
-  for (let i = 0; i < domain.length; i++) {
-    hash = ((hash << 5) - hash + domain.charCodeAt(i)) | 0;
-  }
-  return `orion-${Math.abs(hash).toString(16).padStart(8, "0")}`;
-}
-
+/* -------------------------------------------------------
+🏷️ Badge de status
+-------------------------------------------------------- */
 function StatusBadge({ status }) {
   const map = {
-    pending: { label: "Pendente", color: "#F5C542", icon: Clock3 },
-    verifying: { label: "Verificando", color: "#60A5FA", icon: RefreshCw },
-    verified: { label: "Ativo", color: C.green, icon: CheckCircle2 },
-    failed: { label: "Falhou", color: "#EF4444", icon: AlertCircle },
+    pending:   { label: "Pendente",    color: "#F5C542", icon: Clock3       },
+    verifying: { label: "Verificando", color: "#60A5FA", icon: RefreshCw    },
+    verified:  { label: "Ativo",       color: C.green,   icon: CheckCircle2 },
+    failed:    { label: "Falhou",      color: "#EF4444", icon: AlertCircle  },
   };
   const m = map[status] || map.pending;
   const Icon = m.icon;
@@ -61,6 +47,9 @@ function StatusBadge({ status }) {
   );
 }
 
+/* -------------------------------------------------------
+📋 Campo com botão de copiar
+-------------------------------------------------------- */
 function CopyField({ label, value }) {
   const [copied, setCopied] = useState(false);
 
@@ -125,8 +114,42 @@ function CopyField({ label, value }) {
   );
 }
 
-function DnsRecordsPanel({ domain, token }) {
-  const subdomain = domain.split(".")[0];
+/* -------------------------------------------------------
+✅ Indicador de check DNS inline
+Exibe "OK" ou "Falhou" ao lado do tipo de registro.
+Só aparece quando checks está disponível (após verificação).
+-------------------------------------------------------- */
+function CheckIndicator({ ok }) {
+  return (
+    <div
+      style={{
+        marginLeft: "auto",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        fontSize: 10,
+        fontWeight: 700,
+        color: ok ? C.green : "#EF4444",
+        background: ok ? `${C.green}12` : "#EF444412",
+        border: `1px solid ${ok ? C.green : "#EF4444"}28`,
+        borderRadius: 4,
+        padding: "2px 7px",
+      }}
+    >
+      {ok ? <CheckCircle2 size={9} /> : <AlertCircle size={9} />}
+      {ok ? "OK" : "Falhou"}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------
+🌐 Painel de instruções DNS
+Recebe campos pré-computados pelo backend.
+checks (opcional): { txt, cname } — só presente após verificação.
+-------------------------------------------------------- */
+function DnsRecordsPanel({ cnameName, cnameTarget, txtName, txtValue, checks }) {
+  const hasChecks = checks != null;
+
   return (
     <div
       style={{
@@ -149,7 +172,8 @@ function DnsRecordsPanel({ domain, token }) {
           padding: "12px 14px",
           background: C.card,
           borderRadius: 8,
-          border: `1px solid ${C.border}`,
+          border: `1px solid ${hasChecks ? (checks.cname ? `${C.green}40` : "#EF444440") : C.border}`,
+          transition: "border-color 0.2s",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -167,20 +191,22 @@ function DnsRecordsPanel({ domain, token }) {
             CNAME
           </div>
           <span style={{ fontSize: 11, color: C.muted }}>Redireciona o domínio para nossa infraestrutura</span>
+          {hasChecks && <CheckIndicator ok={checks.cname} />}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <CopyField label="Nome / Host" value={subdomain} />
-          <CopyField label="Destino / Valor" value="checkout.orionpay.com" />
+          <CopyField label="Nome / Host" value={cnameName} />
+          <CopyField label="Destino / Valor" value={cnameTarget} />
         </div>
       </div>
 
-      {/* TXT verificação */}
+      {/* TXT */}
       <div
         style={{
           padding: "12px 14px",
           background: C.card,
           borderRadius: 8,
-          border: `1px solid ${C.border}`,
+          border: `1px solid ${hasChecks ? (checks.txt ? `${C.green}40` : "#EF444440") : C.border}`,
+          transition: "border-color 0.2s",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -198,10 +224,11 @@ function DnsRecordsPanel({ domain, token }) {
             TXT
           </div>
           <span style={{ fontSize: 11, color: C.muted }}>Verificação de propriedade do domínio</span>
+          {hasChecks && <CheckIndicator ok={checks.txt} />}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <CopyField label="Nome / Host" value={`_orion-verify.${subdomain}`} />
-          <CopyField label="Valor" value={`orion-verify=${token}`} />
+          <CopyField label="Nome / Host" value={txtName} />
+          <CopyField label="Valor" value={txtValue} />
         </div>
       </div>
 
@@ -229,16 +256,28 @@ function DnsRecordsPanel({ domain, token }) {
   );
 }
 
+/* -------------------------------------------------------
+🃏 Card de domínio individual
+onVerify(id): async, retorna domínio atualizado via parent
+-------------------------------------------------------- */
 function DomainCard({ domain: d, onDelete, onVerify }) {
   const [expanded, setExpanded] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState(null); // erro transiente (rede, cooldown)
 
   async function handleVerify() {
     setVerifying(true);
-    // Simulate async DNS check (backend will do real lookup)
-    await new Promise((r) => setTimeout(r, 1800));
-    onVerify(d.id);
-    setVerifying(false);
+    setVerifyError(null);
+    try {
+      await onVerify(d.id);
+      // Sucesso: parent atualiza o domínio no state — este componente re-renderiza
+    } catch (err) {
+      const msg =
+        err?.response?.data?.msg ?? "Erro ao verificar domínio. Tente novamente.";
+      setVerifyError(msg);
+    } finally {
+      setVerifying(false);
+    }
   }
 
   return (
@@ -251,6 +290,7 @@ function DomainCard({ domain: d, onDelete, onVerify }) {
         transition: "border-color 0.2s",
       }}
     >
+      {/* Linha principal */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div
           style={{
@@ -298,7 +338,6 @@ function DomainCard({ domain: d, onDelete, onVerify }) {
                 alignItems: "center",
                 justifyContent: "center",
                 textDecoration: "none",
-                transition: "color 0.15s",
               }}
             >
               <ExternalLink size={13} />
@@ -310,6 +349,7 @@ function DomainCard({ domain: d, onDelete, onVerify }) {
               type="button"
               onClick={handleVerify}
               disabled={verifying}
+              title="Verificar registros DNS"
               style={{
                 padding: "5px 12px",
                 borderRadius: 7,
@@ -323,9 +363,14 @@ function DomainCard({ domain: d, onDelete, onVerify }) {
                 display: "flex",
                 alignItems: "center",
                 gap: 5,
+                opacity: verifying ? 0.65 : 1,
+                transition: "opacity 0.15s",
               }}
             >
-              <RefreshCw size={11} style={{ animation: verifying ? "spin 0.8s linear infinite" : "none" }} />
+              <RefreshCw
+                size={11}
+                style={{ animation: verifying ? "spin 0.8s linear infinite" : "none" }}
+              />
               {verifying ? "Verificando…" : "Verificar"}
             </button>
           )}
@@ -372,16 +417,70 @@ function DomainCard({ domain: d, onDelete, onVerify }) {
         </div>
       </div>
 
+      {/* Erro transiente (cooldown, rede) — amarelo, não é falha DNS */}
+      {verifyError && (
+        <div
+          style={{
+            marginTop: 10,
+            padding: "8px 12px",
+            background: "#F5C54210",
+            border: "1px solid #F5C54228",
+            borderRadius: 8,
+            fontSize: 11,
+            color: "#F5C542",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            lineHeight: 1.4,
+          }}
+        >
+          <AlertCircle size={11} style={{ flexShrink: 0 }} />
+          {verifyError}
+        </div>
+      )}
+
+      {/* Erro DNS persistido (status failed) — vermelho, vem do banco */}
+      {d.status === "failed" && d.lastVerificationError && !verifyError && (
+        <div
+          style={{
+            marginTop: 10,
+            padding: "8px 12px",
+            background: "#EF444410",
+            border: "1px solid #EF444428",
+            borderRadius: 8,
+            fontSize: 11,
+            color: "#EF4444",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            lineHeight: 1.4,
+          }}
+        >
+          <AlertCircle size={11} style={{ flexShrink: 0 }} />
+          {d.lastVerificationError}
+        </div>
+      )}
+
       {expanded && (
-        <DnsRecordsPanel domain={d.domain} token={d.verifyToken} />
+        <DnsRecordsPanel
+          cnameName={d.cnameName}
+          cnameTarget={d.cnameTarget}
+          txtName={d.txtName}
+          txtValue={d.txtValue}
+          checks={d.checks?.txt != null ? d.checks : null}
+        />
       )}
     </div>
   );
 }
 
+/* -------------------------------------------------------
+➕ Modal de adição de domínio
+-------------------------------------------------------- */
 function AddDomainModal({ onAdd, onClose }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const DOMAIN_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
 
@@ -392,11 +491,18 @@ function AddDomainModal({ onAdd, onClose }) {
     return "";
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     const err = validate(value);
     if (err) { setError(err); return; }
-    onAdd(value.trim().toLowerCase());
+    setSubmitting(true);
+    try {
+      await onAdd(value.trim().toLowerCase());
+    } catch (apiErr) {
+      const msg = apiErr?.response?.data?.msg ?? "Erro ao adicionar domínio. Tente novamente.";
+      setError(msg);
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -411,7 +517,7 @@ function AddDomainModal({ onAdd, onClose }) {
         zIndex: 1000,
         padding: 20,
       }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={(e) => !submitting && e.target === e.currentTarget && onClose()}
     >
       <div
         style={{
@@ -434,11 +540,13 @@ function AddDomainModal({ onAdd, onClose }) {
           <button
             type="button"
             onClick={onClose}
+            disabled={submitting}
             style={{
               width: 30, height: 30, borderRadius: 8,
               border: "none", background: C.cardSoft,
-              color: C.muted, cursor: "pointer",
+              color: C.muted, cursor: submitting ? "not-allowed" : "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
+              opacity: submitting ? 0.5 : 1,
             }}
           >
             <X size={14} />
@@ -455,6 +563,7 @@ function AddDomainModal({ onAdd, onClose }) {
               value={value}
               onChange={(e) => { setValue(e.target.value); setError(""); }}
               placeholder="pay.meuloja.com.br"
+              disabled={submitting}
               style={{
                 width: "100%",
                 padding: "11px 13px",
@@ -466,6 +575,7 @@ function AddDomainModal({ onAdd, onClose }) {
                 fontFamily: "inherit",
                 outline: "none",
                 boxSizing: "border-box",
+                opacity: submitting ? 0.6 : 1,
               }}
             />
             {error && (
@@ -496,6 +606,7 @@ function AddDomainModal({ onAdd, onClose }) {
             <button
               type="button"
               onClick={onClose}
+              disabled={submitting}
               style={{
                 padding: "9px 18px",
                 borderRadius: 8,
@@ -504,14 +615,16 @@ function AddDomainModal({ onAdd, onClose }) {
                 color: C.muted,
                 fontSize: 13,
                 fontWeight: 600,
-                cursor: "pointer",
+                cursor: submitting ? "not-allowed" : "pointer",
                 fontFamily: "inherit",
+                opacity: submitting ? 0.5 : 1,
               }}
             >
               Cancelar
             </button>
             <button
               type="submit"
+              disabled={submitting}
               style={{
                 padding: "9px 22px",
                 borderRadius: 8,
@@ -520,11 +633,16 @@ function AddDomainModal({ onAdd, onClose }) {
                 color: "#fff",
                 fontSize: 13,
                 fontWeight: 700,
-                cursor: "pointer",
+                cursor: submitting ? "not-allowed" : "pointer",
                 fontFamily: "inherit",
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+                opacity: submitting ? 0.75 : 1,
               }}
             >
-              Adicionar domínio
+              {submitting && <RefreshCw size={12} style={{ animation: "spin 0.8s linear infinite" }} />}
+              {submitting ? "Salvando…" : "Adicionar domínio"}
             </button>
           </div>
         </form>
@@ -533,43 +651,56 @@ function AddDomainModal({ onAdd, onClose }) {
   );
 }
 
+/* -------------------------------------------------------
+🌐 Página principal de Domínios
+-------------------------------------------------------- */
 export default function DominiosPage({ isMobile }) {
-  const [domains, setDomains] = useState(() => loadDomains());
+  const [domains, setDomains] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  const persist = useCallback((list) => {
-    setDomains(list);
-    saveDomains(list);
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+
+    getDomains()
+      .then((data) => {
+        if (!cancelled) setDomains(data.domains ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError("Não foi possível carregar os domínios. Tente novamente.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
   }, []);
 
-  function handleAdd(domain) {
-    const newEntry = {
-      id: `dom_${Date.now()}`,
-      domain,
-      status: "pending",
-      verifyToken: generateVerifyToken(domain),
-      createdAt: new Date().toISOString(),
-    };
-    const next = [...domains, newEntry];
-    persist(next);
+  async function handleAdd(domain) {
+    const data = await createDomain(domain);
+    setDomains((prev) => [data.domain, ...prev]);
     setShowModal(false);
   }
 
-  function handleDelete(id) {
-    if (!window.confirm("Remover este domínio?")) return;
-    persist(domains.filter((d) => d.id !== id));
+  async function handleVerify(id) {
+    const data = await verifyDomainApi(id); // lança em erro (capturado pelo DomainCard)
+    setDomains((prev) =>
+      prev.map((d) => (d.id === id ? data.domain : d))
+    );
   }
 
-  function handleVerify(id) {
-    // In production the backend does a real DNS lookup.
-    // For now, simulate: toggle between verifying→verified (demo).
-    persist(
-      domains.map((d) =>
-        d.id === id
-          ? { ...d, status: d.status === "verified" ? "pending" : "verified" }
-          : d
-      )
-    );
+  async function handleDelete(id) {
+    if (!window.confirm("Remover este domínio?")) return;
+    try {
+      await deleteDomainApi(id);
+      setDomains((prev) => prev.filter((d) => d.id !== id));
+    } catch (err) {
+      const msg = err?.response?.data?.msg ?? "Erro ao remover domínio.";
+      alert(msg);
+    }
   }
 
   const verifiedCount = domains.filter((d) => d.status === "verified").length;
@@ -615,7 +746,7 @@ export default function DominiosPage({ isMobile }) {
       >
         {[
           { label: "Total de domínios", value: domains.length },
-          { label: "Ativos", value: verifiedCount, color: C.green },
+          { label: "Ativos",    value: verifiedCount,                  color: C.green   },
           { label: "Pendentes", value: domains.length - verifiedCount, color: "#F5C542" },
         ].map((s) => (
           <div
@@ -628,85 +759,115 @@ export default function DominiosPage({ isMobile }) {
             }}
           >
             <div style={{ fontSize: 22, fontWeight: 900, color: s.color || C.white, letterSpacing: "-0.03em" }}>
-              {s.value}
+              {loading ? "—" : s.value}
             </div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>{s.label}</div>
           </div>
         ))}
       </div>
 
-      {/* Domain list */}
-      {domains.length === 0 ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "64px 24px",
-            background: C.card,
-            border: `1px solid ${C.border}`,
-            borderRadius: 16,
-          }}
-        >
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 16,
-              background: C.cardSoft,
-              border: `1px solid ${C.border}`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 16px",
-              color: C.dim,
-            }}
-          >
-            <Globe size={24} />
-          </div>
-          <div style={{ fontSize: 16, fontWeight: 800, color: C.white, marginBottom: 6 }}>
-            Nenhum domínio configurado
-          </div>
-          <div style={{ fontSize: 13, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>
-            Adicione um domínio personalizado para usar nos seus checkouts.
-            <br />
-            Ex: <code style={{ color: C.green, fontSize: 12 }}>pay.meusite.com.br</code>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowModal(true)}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 7,
-              padding: "10px 22px",
-              borderRadius: 9,
-              border: "none",
-              background: C.green,
-              color: "#fff",
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            <Plus size={14} />
-            Adicionar primeiro domínio
-          </button>
-        </div>
-      ) : (
-        <div style={{ display: "grid", gap: 10 }}>
-          {domains.map((d) => (
-            <DomainCard
-              key={d.id}
-              domain={d}
-              onDelete={handleDelete}
-              onVerify={handleVerify}
-            />
-          ))}
+      {/* Loading */}
+      {loading && (
+        <div style={{ textAlign: "center", padding: "48px 24px", color: C.muted }}>
+          <RefreshCw size={22} style={{ animation: "spin 1s linear infinite", marginBottom: 10 }} />
+          <div style={{ fontSize: 13 }}>Carregando domínios…</div>
         </div>
       )}
 
+      {/* Erro de carga */}
+      {!loading && loadError && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "16px 20px",
+            background: C.card,
+            border: `1px solid #EF444430`,
+            borderRadius: 12,
+            color: "#EF4444",
+            fontSize: 13,
+          }}
+        >
+          <AlertCircle size={16} style={{ flexShrink: 0 }} />
+          {loadError}
+        </div>
+      )}
+
+      {/* Lista ou empty state */}
+      {!loading && !loadError && (
+        domains.length === 0 ? (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "64px 24px",
+              background: C.card,
+              border: `1px solid ${C.border}`,
+              borderRadius: 16,
+            }}
+          >
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 16,
+                background: C.cardSoft,
+                border: `1px solid ${C.border}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 16px",
+                color: C.dim,
+              }}
+            >
+              <Globe size={24} />
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: C.white, marginBottom: 6 }}>
+              Nenhum domínio configurado
+            </div>
+            <div style={{ fontSize: 13, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>
+              Adicione um domínio personalizado para usar nos seus checkouts.
+              <br />
+              Ex: <code style={{ color: C.green, fontSize: 12 }}>pay.meusite.com.br</code>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowModal(true)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
+                padding: "10px 22px",
+                borderRadius: 9,
+                border: "none",
+                background: C.green,
+                color: "#fff",
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              <Plus size={14} />
+              Adicionar primeiro domínio
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            {domains.map((d) => (
+              <DomainCard
+                key={d.id}
+                domain={d}
+                onDelete={handleDelete}
+                onVerify={handleVerify}
+              />
+            ))}
+          </div>
+        )
+      )}
+
       {/* Info box */}
-      {domains.length > 0 && (
+      {!loading && !loadError && domains.length > 0 && (
         <div
           style={{
             marginTop: 24,

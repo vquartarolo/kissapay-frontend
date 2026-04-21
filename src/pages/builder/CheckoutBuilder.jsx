@@ -13,6 +13,7 @@ import CheckoutRenderer from "../../components/checkout/CheckoutRenderer";
 import ImageUpload from "../../components/ui/ImageUpload";
 import { getCheckoutById, createCheckout, updateCheckout } from "../../services/checkouts.service";
 import { getProdutos, getProdutoById } from "../../services/produtos.service";
+import { getDomains } from "../../services/domains.service";
 
 // ─── Design tokens (CSS vars — respondem ao tema claro/escuro do app) ─────────
 const C = {
@@ -164,6 +165,62 @@ function ProductPicker({ value, onChange }) {
               </button>
             ))}
           </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Domain picker ────────────────────────────────────────────────────────────
+function DomainPicker({ value, onChange }) {
+  const [domains, setDomains]   = useState([]);
+  const [loading, setLoading]   = useState(true);
+
+  useEffect(() => {
+    getDomains()
+      .then((d) => {
+        // Apenas domínios com verificação DNS completa (TXT + CNAME)
+        const verified = (d?.domains ?? []).filter(
+          (dom) => dom.status === "verified" && dom.checks?.txt && dom.checks?.cname
+        );
+        setDomains(verified);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div>
+      <FieldLabel>Domínio personalizado</FieldLabel>
+
+      {loading ? (
+        <div style={{ fontSize: 11, color: C.muted }}>Carregando domínios…</div>
+      ) : (
+        <>
+          <select
+            value={value || ""}
+            onChange={(e) => onChange(e.target.value || null)}
+            style={{ ...FIELD }}
+          >
+            <option value="">Sem domínio personalizado</option>
+            {domains.map((d) => (
+              <option key={d.id} value={d.id}>{d.domain}</option>
+            ))}
+          </select>
+
+          {domains.length === 0 && (
+            <div style={{ fontSize: 11, color: C.dim, marginTop: 5, lineHeight: 1.5 }}>
+              Nenhum domínio verificado. Adicione e verifique em{" "}
+              <strong style={{ color: C.green }}>Domínios</strong>.
+            </div>
+          )}
+
+          {value && domains.find((d) => d.id === value) && (
+            <div style={{ marginTop: 5, fontSize: 11, color: C.muted, display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ color: C.green }}>✓</span>
+              Associação preparatória — checkout white-label ficará ativo quando a infra estiver configurada.
+            </div>
+          )}
         </>
       )}
     </div>
@@ -580,6 +637,7 @@ export default function CheckoutBuilder() {
   const [dragOver, setDragOver] = useState(null);
   const [productsCache, setProductsCache] = useState([]);
   const [linkedProduct, setLinkedProduct] = useState(null);
+  const [customDomainId, setCustomDomainId] = useState(null);
 
   useEffect(() => {
     if (isNew) return;
@@ -595,6 +653,7 @@ export default function CheckoutBuilder() {
           const merged = [...data.config.sections, ...newDefaults.map((s, i) => ({ ...s, order: data.config.sections.length + i }))];
           setSections(merged);
         }
+        if (data.customDomainId) setCustomDomainId(data.customDomainId);
         setSavedId(checkoutId);
       } catch { /* use defaults */ }
       finally { setLoading(false); }
@@ -657,7 +716,7 @@ export default function CheckoutBuilder() {
   async function handleSave() {
     try {
       setSaving(true);
-      const payload = { name, config: { theme, sections } };
+      const payload = { name, config: { theme, sections }, customDomainId: customDomainId || null };
       let result;
       if (savedId) {
         result = await updateCheckout(savedId, payload);
@@ -913,6 +972,13 @@ export default function CheckoutBuilder() {
                     style={{ flex: 1, accentColor: C.green }} />
                   <span style={{ fontSize: 12, color: C.white, width: 32, textAlign: "right" }}>{theme.btnRadius}px</span>
                 </div>
+              </div>
+
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: C.dim, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 8 }}>
+                  Domínio
+                </div>
+                <DomainPicker value={customDomainId} onChange={setCustomDomainId} />
               </div>
             </div>
           )}

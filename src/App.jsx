@@ -37,6 +37,13 @@ import AdminWithdrawalsPage from "./pages/admin/AdminWithdrawals";
 import AdminManagePage from "./pages/admin/AdminManage";
 import AdminAuditPage from "./pages/admin/AdminAudit";
 
+// Domínios próprios da plataforma — nunca tratados como domínios de clientes
+const _OWN_HOSTNAMES = new Set(["localhost", "127.0.0.1", "siteorionpay.vercel.app"]);
+const _IP_REGEX = /^\d{1,3}(\.\d{1,3}){3}$/;
+const _h = window.location.hostname;
+const IS_CUSTOM_DOMAIN =
+  !_OWN_HOSTNAMES.has(_h) && !_IP_REGEX.test(_h) && !_h.endsWith(".vercel.app");
+
 const GLOBAL_STYLES = `
   :root {
     --c-bg:            #09090B;
@@ -232,6 +239,19 @@ export default function App() {
       <ThemeProvider>
         <style>{GLOBAL_STYLES}</style>
         <VerifyEmailPage />
+      </ThemeProvider>
+    );
+  }
+
+  // Domínio customizado de cliente — serve apenas a CheckoutPage, sem autenticação ou sidebar
+  if (IS_CUSTOM_DOMAIN) {
+    return (
+      <ThemeProvider>
+        <style>{GLOBAL_STYLES}</style>
+        <Routes>
+          <Route path="/" element={<CheckoutPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </ThemeProvider>
     );
   }

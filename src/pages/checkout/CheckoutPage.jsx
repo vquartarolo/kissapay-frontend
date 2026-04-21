@@ -18,8 +18,18 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { getCheckoutPublic } from "../../services/produtos.service";
+import { getCheckoutByDomain } from "../../services/checkouts.service";
 import CheckoutRenderer from "../../components/checkout/CheckoutRenderer";
 import api from "../../services/api";
+
+// ─── Custom domain detection ────────────────────────────────────────────────
+const _OWN_HOSTNAMES = new Set(["localhost", "127.0.0.1", "siteorionpay.vercel.app"]);
+const _IP_REGEX = /^\d{1,3}(\.\d{1,3}){3}$/;
+
+function isCustomDomainHost() {
+  const h = window.location.hostname;
+  return !_OWN_HOSTNAMES.has(h) && !_IP_REGEX.test(h) && !h.endsWith(".vercel.app");
+}
 
 // ─── Payment API helpers ────────────────────────────────────────────────────
 
@@ -819,6 +829,7 @@ function CheckoutForm({ checkoutId, config, product, theme, onOrder }) {
 export default function CheckoutPage() {
   const { slug } = useParams();
   const [state, setState] = useState("loading");
+  const [checkoutId, setCheckoutId] = useState(slug || null);
   const [product, setProduct] = useState(null);
   const [config, setConfig] = useState(null);
   const [order, setOrder] = useState(null);
@@ -827,9 +838,14 @@ export default function CheckoutPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await getCheckoutPublic(slug);
-        // backend returns { checkout: { config, ... }, product }
+        let res;
+        if (isCustomDomainHost()) {
+          res = await getCheckoutByDomain();
+        } else {
+          res = await getCheckoutPublic(slug);
+        }
         const checkout = res.checkout || {};
+        setCheckoutId(checkout.id || slug || null);
         setProduct(res.product || null);
         setConfig(checkout.config || { theme: {}, sections: [] });
         setState("form");
@@ -949,7 +965,7 @@ export default function CheckoutPage() {
     >
       <div style={{ maxWidth: 520, margin: "0 auto" }}>
         <CheckoutForm
-          checkoutId={slug}
+          checkoutId={checkoutId}
           config={config}
           product={product}
           theme={theme}

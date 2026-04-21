@@ -49,3 +49,8 @@ export async function deleteCheckout(id) {
   const { data } = await api.delete(`/checkouts/${id}`);
   return data;
 }
+
+export async function getCheckoutByDomain() {
+  const { data } = await api.get("/checkout/current");
+  return data;
+}

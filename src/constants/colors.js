@@ -25,7 +25,7 @@ const C = {
   // ── Brand accents — same in both themes ───────────────────────
   green:        "#2D8659",
   greenBright:  "#34A065",
-  gold:         "#D4AF37",
+  gold:         "#81B61C",
 
   // ── Feedback ─────────────────────────────────────────────────
   error:   "#E5484D",

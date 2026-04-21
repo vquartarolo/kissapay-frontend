@@ -39,16 +39,37 @@ export async function updateAdminAccountStatus(id, status) {
   return data;
 }
 
+/* =========================
+   SPLIT / TAXAS POR SELLER
+========================= */
 export async function getAdminAccountSplit(id) {
-  const { data } = await api.get(`/users/${id}/split`);
+  const { data } = await api.get(`/admin/accounts/${id}/split`);
   return data;
 }
 
+/**
+ * payload: {
+ *   cashIn:    { pix?: { fixed, percentage }, crypto?: { fixed, percentage } },
+ *   cashOut:   { pix?: { fixed, percentage }, crypto?: { fixed, percentage } },
+ *   retention: { days, percentage }
+ * }
+ */
 export async function updateAdminAccountSplit(id, payload) {
-  const { data } = await api.patch(`/users/${id}/split`, payload);
+  const { data } = await api.patch(`/admin/accounts/${id}/split`, payload);
   return data;
 }
 
+/* =========================
+   ROTEAMENTO DE ADQUIRENTE
+========================= */
+export async function updateAdminAccountRouting(id, payload) {
+  const { data } = await api.patch(`/admin/accounts/${id}/routing`, payload);
+  return data;
+}
+
+/* =========================
+   TRANSAÇÕES E KYC
+========================= */
 export async function getAdminAccountTransactions(id, params = {}) {
   const query = new URLSearchParams();
   if (params.page) query.set("page", String(params.page));
@@ -64,12 +85,23 @@ export async function getAdminAccountKyc(id) {
   return data;
 }
 
+/* =========================
+   PROVEDORES / ADQUIRENTES
+========================= */
 export async function getAdminProviders() {
   const { data } = await api.get(`/admin/providers`);
   return data;
 }
 
-export async function updateAdminAccountRouting(id, payload) {
-  const { data } = await api.patch(`/admin/accounts/${id}/routing`, payload);
+/* =========================
+   CONFIGURAÇÃO PADRÃO
+========================= */
+export async function getAdminConfig() {
+  const { data } = await api.get(`/admin/config`);
+  return data;
+}
+
+export async function updateAdminConfig(payload) {
+  const { data } = await api.patch(`/admin/config`, payload);
   return data;
 }

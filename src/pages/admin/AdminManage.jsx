@@ -61,7 +61,7 @@ function getUserStatusPreset(status = "active") {
     return { label: "Bloqueado", color: C.error, bg: "rgba(229,72,77,0.12)" };
   }
   if (normalized === "inactive") {
-    return { label: "Inativo", color: C.gold, bg: "rgba(212,175,55,0.12)" };
+    return { label: "Inativo", color: C.gold, bg: "rgba(129,182,28,0.10)" };
   }
   return { label: "Ativo", color: C.green, bg: "rgba(45,134,89,0.12)" };
 }
@@ -89,22 +89,22 @@ function getAccountStatusLabel(value = "") {
 
 function getModalTheme(isDark) {
   return {
-    overlayBg: isDark ? "rgba(0,0,0,0.55)" : "rgba(15,23,42,0.18)",
-    modalBg: isDark ? "#0B0B0E" : "#ffffff",
-    modalBgSoft: isDark ? "#141417" : "#f8fafc",
-    headerBg: isDark ? "#0B0B0E" : "#ffffff",
-    contentBg: isDark ? "#09090B" : "#f1f5f9",
-    cardBg: isDark ? "#1C1C21" : "#ffffff",
-    inputBg: isDark ? "#07090D" : "#ffffff",
+    overlayBg: isDark ? "rgba(0,0,0,0.60)" : "rgba(15,23,42,0.22)",
+    modalBg: isDark ? "#111A23" : "#ffffff",
+    modalBgSoft: isDark ? "#16202C" : "#f8fafc",
+    headerBg: isDark ? "#111A23" : "#ffffff",
+    contentBg: isDark ? "#0D1520" : "#f1f5f9",
+    cardBg: isDark ? "#1B2736" : "#ffffff",
+    inputBg: isDark ? "#0D1520" : "#ffffff",
     border: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)",
     title: isDark ? "#FFFFFF" : "#0f172a",
     text: isDark ? "#5A6A7E" : "#5c6b82",
     muted: isDark ? "#5A6A7E" : "#7b8ba5",
     shadow: isDark
-      ? "0 24px 80px rgba(0,0,0,0.55)"
-      : "0 24px 80px rgba(15,23,42,0.16)",
-    closeBg: isDark ? "#1C1C21" : "#f8fafc",
-    listRowBg: isDark ? "#141417" : "#ffffff",
+      ? "0 24px 60px rgba(0,0,0,0.50), 0 4px 16px rgba(0,0,0,0.30)"
+      : "0 24px 60px rgba(15,23,42,0.16)",
+    closeBg: isDark ? "#1B2736" : "#f8fafc",
+    listRowBg: isDark ? "#16202C" : "#ffffff",
   };
 }
 
@@ -304,13 +304,14 @@ function SectionCard({ icon, title, children, theme }) {
       style={{
         background: theme.cardBg,
         border: `1px solid ${theme.border}`,
+        borderTop: "1px solid rgba(45,134,89,0.22)",
         borderRadius: 18,
         padding: "16px",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
         {icon}
-        <div style={{ fontSize: 15, fontWeight: 900, color: theme.title }}>{title}</div>
+        <div style={{ fontSize: 14, fontWeight: 800, color: theme.title, letterSpacing: "-0.01em" }}>{title}</div>
       </div>
       {children}
     </div>
@@ -487,6 +488,8 @@ export default function AdminManagePage({ isMobile }) {
     cryptoInPercentage: "",
     cryptoOutFixed: "",
     cryptoOutPercentage: "",
+    retentionDays: "",
+    retentionPercentage: "",
   });
 
   const [routingForm, setRoutingForm] = useState({
@@ -568,20 +571,23 @@ export default function AdminManagePage({ isMobile }) {
       });
 
       const split = splitRes?.split || detail?.split || null;
+      const retention = splitRes?.retention || detail?.retention || null;
       setSplitForm({
-        pixInFixed: String(split?.cashIn?.pix?.fixed ?? 0),
-        pixInPercentage: String(split?.cashIn?.pix?.percentage ?? 0),
-        pixOutFixed: String(split?.cashOut?.pix?.fixed ?? 0),
-        pixOutPercentage: String(split?.cashOut?.pix?.percentage ?? 0),
-        cryptoInFixed: String(split?.cashIn?.crypto?.fixed ?? 0),
-        cryptoInPercentage: String(split?.cashIn?.crypto?.percentage ?? 0),
-        cryptoOutFixed: String(split?.cashOut?.crypto?.fixed ?? 0),
+        pixInFixed:          String(split?.cashIn?.pix?.fixed ?? 0),
+        pixInPercentage:     String(split?.cashIn?.pix?.percentage ?? 0),
+        pixOutFixed:         String(split?.cashOut?.pix?.fixed ?? 0),
+        pixOutPercentage:    String(split?.cashOut?.pix?.percentage ?? 0),
+        cryptoInFixed:       String(split?.cashIn?.crypto?.fixed ?? 0),
+        cryptoInPercentage:  String(split?.cashIn?.crypto?.percentage ?? 0),
+        cryptoOutFixed:      String(split?.cashOut?.crypto?.fixed ?? 0),
         cryptoOutPercentage: String(split?.cashOut?.crypto?.percentage ?? 0),
+        retentionDays:       String(retention?.days ?? 0),
+        retentionPercentage: String(retention?.percentage ?? 0),
       });
 
-      const routing = detail?.routing || {};
+      const routing = splitRes?.routing || detail?.routing || {};
       setRoutingForm({
-        chargeProvider: routing.chargeProvider || "",
+        chargeProvider:  routing.chargeProvider || "",
         cashoutProvider: routing.cashoutProvider || "",
       });
 
@@ -706,34 +712,21 @@ export default function AdminManagePage({ isMobile }) {
       setFeedback("");
 
       await updateAdminAccountSplit(selectedId, {
-        method: "pix",
-        direction: "in",
-        fixed: Number(splitForm.pixInFixed || 0),
-        percentage: Number(splitForm.pixInPercentage || 0),
+        cashIn: {
+          pix:    { fixed: Number(splitForm.pixInFixed || 0),    percentage: Number(splitForm.pixInPercentage || 0) },
+          crypto: { fixed: Number(splitForm.cryptoInFixed || 0), percentage: Number(splitForm.cryptoInPercentage || 0) },
+        },
+        cashOut: {
+          pix:    { fixed: Number(splitForm.pixOutFixed || 0),    percentage: Number(splitForm.pixOutPercentage || 0) },
+          crypto: { fixed: Number(splitForm.cryptoOutFixed || 0), percentage: Number(splitForm.cryptoOutPercentage || 0) },
+        },
+        retention: {
+          days:       Number(splitForm.retentionDays || 0),
+          percentage: Number(splitForm.retentionPercentage || 0),
+        },
       });
 
-      await updateAdminAccountSplit(selectedId, {
-        method: "pix",
-        direction: "out",
-        fixed: Number(splitForm.pixOutFixed || 0),
-        percentage: Number(splitForm.pixOutPercentage || 0),
-      });
-
-      await updateAdminAccountSplit(selectedId, {
-        method: "crypto",
-        direction: "in",
-        fixed: Number(splitForm.cryptoInFixed || 0),
-        percentage: Number(splitForm.cryptoInPercentage || 0),
-      });
-
-      await updateAdminAccountSplit(selectedId, {
-        method: "crypto",
-        direction: "out",
-        fixed: Number(splitForm.cryptoOutFixed || 0),
-        percentage: Number(splitForm.cryptoOutPercentage || 0),
-      });
-
-      setFeedback("Taxas de entrada e saída atualizadas com sucesso.");
+      setFeedback("Taxas, saídas e retenção atualizadas com sucesso.");
 
       await loadAccounts(pagination.page || 1, false);
       await openAccount(selectedId);
@@ -764,6 +757,11 @@ export default function AdminManagePage({ isMobile }) {
 
   const totalAvailable = useMemo(
     () => rows.reduce((acc, item) => acc + Number(item?.balance || 0), 0),
+    [rows]
+  );
+
+  const totalVolume = useMemo(
+    () => rows.reduce((acc, item) => acc + Number(item?.totalVolume || 0), 0),
     [rows]
   );
 
@@ -821,7 +819,7 @@ export default function AdminManagePage({ isMobile }) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)",
+          gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)",
           gap: 12,
           marginBottom: 18,
         }}
@@ -849,10 +847,17 @@ export default function AdminManagePage({ isMobile }) {
         />
         <MetricCard
           icon={<WalletCards size={15} />}
-          title="Saldo visível"
+          title="Saldo em conta"
           value={`R$ ${fmtBRL(totalAvailable)}`}
-          helper="Soma das contas da página"
+          helper="Soma dos saldos na página"
           accent={C.gold}
+        />
+        <MetricCard
+          icon={<Percent size={15} />}
+          title="Volume processado"
+          value={`R$ ${fmtBRL(totalVolume)}`}
+          helper="Transações aprovadas"
+          accent={C.green}
         />
       </div>
 
@@ -920,17 +925,17 @@ export default function AdminManagePage({ isMobile }) {
               display: "grid",
               gridTemplateColumns: "1fr 120px 120px 150px",
               gap: 12,
-              padding: "10px 14px",
-              borderBottom: `1px solid ${C.border}`,
+              padding: "10px 18px 10px 16px",
+              borderBottom: `1px solid rgba(255,255,255,0.06)`,
               fontSize: 10,
-              fontWeight: 700,
+              fontWeight: 800,
               color: C.muted,
               textTransform: "uppercase",
-              letterSpacing: "0.08em",
+              letterSpacing: "0.12em",
             }}
           >
             <span>Conta</span>
-            <span>Saldo</span>
+            <span style={{ fontVariantNumeric: "tabular-nums" }}>Saldo</span>
             <span>Status</span>
             <span>Conta operacional</span>
           </div>
@@ -950,14 +955,16 @@ export default function AdminManagePage({ isMobile }) {
               <button
                 key={item.id}
                 type="button"
+                className="orion-row"
                 onClick={() => openAccount(item.id)}
                 style={{
                   width: "100%",
                   textAlign: "left",
-                  background: isActive ? "rgba(255,255,255,0.03)" : "transparent",
+                  background: isActive ? "rgba(45,134,89,0.04)" : "transparent",
                   border: "none",
-                  borderBottom: index < rows.length - 1 ? `1px solid ${C.border}` : "none",
-                  padding: "14px",
+                  borderLeft: isActive ? "2px solid rgba(45,134,89,0.45)" : "2px solid transparent",
+                  borderBottom: index < rows.length - 1 ? `1px solid rgba(255,255,255,0.05)` : "none",
+                  padding: "16px 18px 16px 14px",
                   display: isMobile ? "flex" : "grid",
                   gridTemplateColumns: "1fr 120px 120px 150px",
                   gap: 12,
@@ -965,7 +972,7 @@ export default function AdminManagePage({ isMobile }) {
                   flexWrap: "wrap",
                   cursor: "pointer",
                   fontFamily: "inherit",
-                  transition: "background 0.16s ease",
+                  transition: "background 0.15s ease, border-left-color 0.15s ease",
                 }}
               >
                 <div style={{ minWidth: 0 }}>
@@ -987,7 +994,7 @@ export default function AdminManagePage({ isMobile }) {
                   </div>
                 </div>
 
-                <div style={{ fontSize: 14, fontWeight: 800, color: C.white }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: C.white, fontVariantNumeric: "tabular-nums" }}>
                   {`R$ ${fmtBRL(item?.balance || 0)}`}
                 </div>
 
@@ -1055,8 +1062,23 @@ export default function AdminManagePage({ isMobile }) {
                   borderBottom: `1px solid ${modalTheme.border}`,
                   flexShrink: 0,
                   background: modalTheme.headerBg,
+                  position: "relative",
+                  overflow: "hidden",
                 }}
               >
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    right: 0,
+                    width: 140,
+                    height: 100,
+                    background: "linear-gradient(135deg, transparent 55%, rgba(129,182,28,0.05) 100%)",
+                    borderTopRightRadius: isMobile ? 20 : 24,
+                    pointerEvents: "none",
+                  }}
+                />
                 <div style={{ minWidth: 0 }}>
                   <div
                     style={{
@@ -1107,6 +1129,9 @@ export default function AdminManagePage({ isMobile }) {
                   minHeight: 0,
                   overflowY: "auto",
                   padding: isMobile ? 14 : 20,
+                  backgroundColor: modalTheme.contentBg,
+                  backgroundImage: "radial-gradient(circle, rgba(45,134,89,0.045) 1px, transparent 1px)",
+                  backgroundSize: "24px 24px",
                 }}
               >
                 {detailsLoading || !selected ? (
@@ -1214,11 +1239,18 @@ export default function AdminManagePage({ isMobile }) {
                         }
                         disabled={savingStatus}
                         style={{
-                          border: "1px solid rgba(229,72,77,0.16)",
+                          border: selected.status === "blocked"
+                            ? "1px solid rgba(52,160,101,0.25)"
+                            : "1px solid rgba(229,72,77,0.22)",
                           borderRadius: 14,
                           padding: "14px 16px",
-                          background: "rgba(229,72,77,0.10)",
-                          color: C.error,
+                          background: selected.status === "blocked"
+                            ? "linear-gradient(160deg, #34A065 0%, #2D8659 60%, #246B47 100%)"
+                            : "linear-gradient(160deg, #F05A5E 0%, #E5484D 60%, #C73D42 100%)",
+                          boxShadow: selected.status === "blocked"
+                            ? "0 4px 12px rgba(45,134,89,0.14), 0 1px 3px rgba(0,0,0,0.22)"
+                            : "0 4px 12px rgba(229,72,77,0.14), 0 1px 3px rgba(0,0,0,0.22)",
+                          color: "#FFFFFF",
                           fontWeight: 900,
                           fontFamily: "inherit",
                           cursor: savingStatus ? "not-allowed" : "pointer",
@@ -1228,6 +1260,7 @@ export default function AdminManagePage({ isMobile }) {
                           justifyContent: "center",
                           gap: 8,
                           minHeight: 50,
+                          fontSize: 14,
                         }}
                       >
                         {selected.status === "blocked" ? <ShieldCheck size={15} /> : <Ban size={15} />}
@@ -1242,11 +1275,12 @@ export default function AdminManagePage({ isMobile }) {
                         onClick={() => handleStatusChange("inactive")}
                         disabled={savingStatus}
                         style={{
-                          border: "1px solid rgba(212,175,55,0.20)",
+                          border: "1px solid rgba(129,182,28,0.22)",
                           borderRadius: 14,
                           padding: "14px 16px",
-                          background: "rgba(212,175,55,0.10)",
-                          color: C.gold,
+                          background: "linear-gradient(160deg, #96CC20 0%, #81B61C 60%, #6A9A14 100%)",
+                          boxShadow: "0 4px 12px rgba(129,182,28,0.12), 0 1px 3px rgba(0,0,0,0.22)",
+                          color: "#FFFFFF",
                           fontWeight: 900,
                           fontFamily: "inherit",
                           cursor: savingStatus ? "not-allowed" : "pointer",
@@ -1256,6 +1290,7 @@ export default function AdminManagePage({ isMobile }) {
                           justifyContent: "center",
                           gap: 8,
                           minHeight: 50,
+                          fontSize: 14,
                         }}
                       >
                         <BadgeCheck size={15} />
@@ -1364,6 +1399,57 @@ export default function AdminManagePage({ isMobile }) {
                               </div>
                             </div>
                           ))}
+
+                          <div
+                            style={{
+                              borderTop: `1px solid ${modalTheme.border}`,
+                              paddingTop: 14,
+                              marginTop: 2,
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 800,
+                                color: C.gold,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.1em",
+                                marginBottom: 10,
+                              }}
+                            >
+                              Retenção
+                            </div>
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                                gap: 8,
+                              }}
+                            >
+                              <div>
+                                <div style={{ fontSize: 11, color: modalTheme.muted, marginBottom: 5 }}>Dias de retenção</div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={splitForm.retentionDays}
+                                  onChange={(e) => setSplitForm((prev) => ({ ...prev, retentionDays: e.target.value }))}
+                                  style={{ ...inputStyle, background: modalTheme.inputBg, border: `1px solid ${modalTheme.border}`, color: modalTheme.title }}
+                                />
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 11, color: modalTheme.muted, marginBottom: 5 }}>Percentual retido (%)</div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="0.01"
+                                  value={splitForm.retentionPercentage}
+                                  onChange={(e) => setSplitForm((prev) => ({ ...prev, retentionPercentage: e.target.value }))}
+                                  style={{ ...inputStyle, background: modalTheme.inputBg, border: `1px solid ${modalTheme.border}`, color: modalTheme.title }}
+                                />
+                              </div>
+                            </div>
+                          </div>
 
                           <Btn
                             onClick={handleSaveSplit}
@@ -1554,7 +1640,7 @@ export default function AdminManagePage({ isMobile }) {
                                 </div>
                               </div>
 
-                              <div style={{ fontSize: 13, color: modalTheme.title, fontWeight: 900 }}>
+                              <div style={{ fontSize: 13, color: modalTheme.title, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>
                                 {`R$ ${fmtBRL(tx.amount)}`}
                               </div>
 
@@ -1579,6 +1665,10 @@ export default function AdminManagePage({ isMobile }) {
               @keyframes orionScaleIn {
                 from { opacity: 0; transform: translateY(8px) scale(0.99); }
                 to { opacity: 1; transform: translateY(0) scale(1); }
+              }
+              .orion-row:hover {
+                background: rgba(45,134,89,0.03) !important;
+                border-left-color: rgba(45,134,89,0.35) !important;
               }
             `}</style>
           </div>

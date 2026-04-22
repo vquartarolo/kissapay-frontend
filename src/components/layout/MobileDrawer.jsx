@@ -60,11 +60,11 @@ const ANIM = `
     to   { opacity: 1; }
   }
   @keyframes _slideRight {
-    from { transform: translateX(28px); opacity: 0; }
+    from { transform: translateX(24px); opacity: 0; }
     to   { transform: translateX(0);   opacity: 1; }
   }
   @keyframes _slideLeft {
-    from { transform: translateX(-28px); opacity: 0; }
+    from { transform: translateX(-24px); opacity: 0; }
     to   { transform: translateX(0);     opacity: 1; }
   }
 `;
@@ -79,9 +79,9 @@ function DrawerItem({ item, isActive, hasChildren, onClick }) {
         display: "flex",
         alignItems: "center",
         gap: 12,
-        padding: "10px 16px",
+        padding: "0 20px 0 24px",
         border: "none",
-        background: isActive ? "rgba(45,134,89,0.07)" : "transparent",
+        background: "transparent",
         color: isActive ? C.white : C.muted,
         fontSize: 14,
         fontWeight: isActive ? 600 : 400,
@@ -89,48 +89,43 @@ function DrawerItem({ item, isActive, hasChildren, onClick }) {
         textAlign: "left",
         fontFamily: "inherit",
         letterSpacing: "0.01em",
-        minHeight: 50,
-        transition: "background 0.12s",
+        minHeight: 46,
+        transition: "color 0.1s",
       }}
     >
+      {/* Accent bar */}
       {isActive && (
         <span style={{
           position: "absolute",
           left: 0,
           top: "50%",
           transform: "translateY(-50%)",
-          width: 3,
-          height: "52%",
+          width: 2,
+          height: "38%",
           borderRadius: 2,
           background: C.green,
         }} />
       )}
 
-      {/* Icon container */}
-      <div style={{
-        width: 34,
-        height: 34,
-        borderRadius: 9,
-        flexShrink: 0,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: isActive
-          ? "rgba(45,134,89,0.12)"
-          : "rgba(255,255,255,0.04)",
-        border: `1px solid ${isActive ? "rgba(45,134,89,0.22)" : "var(--c-border)"}`,
-      }}>
-        <item.icon
-          size={15}
-          strokeWidth={isActive ? 2.2 : 1.7}
-          style={{ color: isActive ? C.green : "inherit" }}
-        />
-      </div>
+      {/* Clean icon — no container */}
+      <item.icon
+        size={16}
+        strokeWidth={isActive ? 2.1 : 1.6}
+        style={{
+          color: isActive ? C.green : "inherit",
+          flexShrink: 0,
+          opacity: isActive ? 1 : 0.7,
+        }}
+      />
 
       <span style={{ flex: 1, lineHeight: 1.3 }}>{item.label}</span>
 
       {hasChildren && (
-        <ChevronRight size={14} strokeWidth={1.8} style={{ color: C.dim, flexShrink: 0 }} />
+        <ChevronRight
+          size={13}
+          strokeWidth={1.7}
+          style={{ color: C.dim, flexShrink: 0, opacity: 0.5 }}
+        />
       )}
     </button>
   );
@@ -141,8 +136,8 @@ export default function MobileDrawer({ isOpen, onClose }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [subview, setSubview] = useState(null);   // null | { title, items }
-  const [slideDir, setSlideDir] = useState(null); // "right" | "left" | null
+  const [subview, setSubview] = useState(null);
+  const [slideDir, setSlideDir] = useState(null);
 
   const isAdmin = ["moderator", "super_moderator", "admin", "master"].includes(
     String(user?.role || "").toLowerCase()
@@ -150,7 +145,6 @@ export default function MobileDrawer({ isOpen, onClose }) {
 
   const activeId = useMemo(() => resolveActive(location.pathname), [location.pathname]);
 
-  // Reset subview when drawer closes
   useEffect(() => {
     if (!isOpen) {
       setSubview(null);
@@ -158,7 +152,6 @@ export default function MobileDrawer({ isOpen, onClose }) {
     }
   }, [isOpen]);
 
-  // Lock body scroll
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
@@ -200,9 +193,9 @@ export default function MobileDrawer({ isOpen, onClose }) {
     : "Conta";
 
   const contentAnim = slideDir === "right"
-    ? "_slideRight 0.22s ease forwards"
+    ? "_slideRight 0.2s ease forwards"
     : slideDir === "left"
-      ? "_slideLeft 0.22s ease forwards"
+      ? "_slideLeft 0.2s ease forwards"
       : "none";
 
   return (
@@ -215,9 +208,9 @@ export default function MobileDrawer({ isOpen, onClose }) {
         style={{
           position: "fixed",
           inset: 0,
-          background: "rgba(0,0,0,0.65)",
+          background: "rgba(0,0,0,0.6)",
           zIndex: 400,
-          animation: "_drawerFade 0.22s ease forwards",
+          animation: "_drawerFade 0.2s ease forwards",
         }}
       />
 
@@ -229,26 +222,31 @@ export default function MobileDrawer({ isOpen, onClose }) {
           left: 0,
           right: 0,
           background: "var(--c-sidebar)",
-          borderRadius: "20px 20px 0 0",
-          borderTop: `1px solid ${C.borderStrong}`,
+          borderRadius: "22px 22px 0 0",
+          borderTop: "1px solid rgba(255,255,255,0.08)",
+          boxShadow: "0 -24px 60px rgba(0,0,0,0.5)",
           zIndex: 401,
           maxHeight: "88vh",
           display: "flex",
           flexDirection: "column",
-          animation: "_drawerUp 0.3s cubic-bezier(0.32,0.72,0,1) forwards",
+          animation: "_drawerUp 0.32s cubic-bezier(0.25,0.8,0.25,1) forwards",
         }}
       >
         {/* Handle */}
-        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 0" }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: C.borderStrong }} />
+        <div style={{ display: "flex", justifyContent: "center", padding: "14px 0 0" }}>
+          <div style={{
+            width: 40,
+            height: 4,
+            borderRadius: 2,
+            background: "rgba(255,255,255,0.12)",
+          }} />
         </div>
 
         {/* Header */}
         <div style={{
           display: "flex",
           alignItems: "center",
-          gap: 10,
-          padding: "10px 16px 10px",
+          padding: "10px 20px 12px",
           borderBottom: `1px solid ${C.border}`,
         }}>
           {subview ? (
@@ -256,7 +254,7 @@ export default function MobileDrawer({ isOpen, onClose }) {
               <button
                 onClick={handleBack}
                 style={{
-                  width: 32, height: 32,
+                  width: 30, height: 30,
                   borderRadius: 8,
                   border: `1px solid ${C.border}`,
                   background: "transparent",
@@ -266,9 +264,10 @@ export default function MobileDrawer({ isOpen, onClose }) {
                   justifyContent: "center",
                   cursor: "pointer",
                   flexShrink: 0,
+                  marginRight: 10,
                 }}
               >
-                <ArrowLeft size={15} strokeWidth={2} />
+                <ArrowLeft size={14} strokeWidth={2} />
               </button>
               <span style={{
                 flex: 1,
@@ -282,32 +281,30 @@ export default function MobileDrawer({ isOpen, onClose }) {
             </>
           ) : (
             <>
-              {/* OrionPay logo mark */}
               <div style={{
-                width: 26, height: 26,
-                borderRadius: 7,
+                width: 24, height: 24,
+                borderRadius: 6,
                 background: "linear-gradient(145deg, #1A3828, #0F2118)",
-                border: "1px solid rgba(45,134,89,0.25)",
+                border: "1px solid rgba(45,134,89,0.22)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
+                marginRight: 8,
               }}>
                 <span style={{
                   fontFamily: "'Playfair Display', Georgia, serif",
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: 800,
                   background: `linear-gradient(135deg, ${C.gold}, #F0D060)`,
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
-                }}>
-                  O
-                </span>
+                }}>O</span>
               </div>
               <span style={{
                 flex: 1,
                 fontFamily: "'Playfair Display', Georgia, serif",
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 800,
                 letterSpacing: "0.08em",
                 color: C.white,
@@ -320,8 +317,8 @@ export default function MobileDrawer({ isOpen, onClose }) {
           <button
             onClick={onClose}
             style={{
-              width: 32, height: 32,
-              borderRadius: 8,
+              width: 28, height: 28,
+              borderRadius: 7,
               border: `1px solid ${C.border}`,
               background: "transparent",
               color: C.muted,
@@ -330,9 +327,10 @@ export default function MobileDrawer({ isOpen, onClose }) {
               justifyContent: "center",
               cursor: "pointer",
               flexShrink: 0,
+              opacity: 0.7,
             }}
           >
-            <X size={15} strokeWidth={2} />
+            <X size={14} strokeWidth={2} />
           </button>
         </div>
 
@@ -346,50 +344,37 @@ export default function MobileDrawer({ isOpen, onClose }) {
           }}
         >
           {subview ? (
-            /* Sub-panel */
-            <div style={{ padding: "6px 0 12px" }}>
-              {subview.items.map((item) => {
-                const isActive = activeId === item.id;
-                return (
-                  <DrawerItem
-                    key={item.id}
-                    item={item}
-                    isActive={isActive}
-                    hasChildren={false}
-                    onClick={() => handleSubItemClick(item.id)}
-                  />
-                );
-              })}
+            <div style={{ padding: "8px 0 16px" }}>
+              {subview.items.map((item) => (
+                <DrawerItem
+                  key={item.id}
+                  item={item}
+                  isActive={activeId === item.id}
+                  hasChildren={false}
+                  onClick={() => handleSubItemClick(item.id)}
+                />
+              ))}
             </div>
           ) : (
-            /* Main menu */
-            <div style={{ padding: "4px 0 12px" }}>
+            <div style={{ padding: "2px 0 16px" }}>
               {visibleSections.map((section, si) => (
                 <div key={section.title}>
-                  {/* Section label + divider */}
-                  <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "14px 16px 6px",
-                  }}>
+                  {/* Section label — subtle, no divider line */}
+                  <div style={{ padding: "16px 20px 3px" }}>
                     <span style={{
                       fontSize: 9,
                       fontWeight: 700,
-                      letterSpacing: "0.14em",
+                      letterSpacing: "0.13em",
                       textTransform: "uppercase",
                       color: C.dim,
-                      flexShrink: 0,
                     }}>
                       {section.title}
                     </span>
-                    <div style={{ flex: 1, height: 1, background: C.border }} />
                   </div>
 
                   {section.items.map((item) => {
                     const childIds = item.children?.map((c) => c.id) ?? [];
-                    const isActive =
-                      activeId === item.id || childIds.includes(activeId);
+                    const isActive = activeId === item.id || childIds.includes(activeId);
                     return (
                       <DrawerItem
                         key={item.id}
@@ -402,7 +387,12 @@ export default function MobileDrawer({ isOpen, onClose }) {
                   })}
 
                   {si < visibleSections.length - 1 && (
-                    <div style={{ height: 6 }} />
+                    <div style={{
+                      height: 1,
+                      background: C.border,
+                      margin: "8px 20px 0",
+                      opacity: 0.6,
+                    }} />
                   )}
                 </div>
               ))}
@@ -410,29 +400,28 @@ export default function MobileDrawer({ isOpen, onClose }) {
           )}
         </div>
 
-        {/* Footer: user + logout */}
+        {/* Footer */}
         <div style={{
-          borderTop: `1px solid ${C.border}`,
-          padding: "12px 16px",
-          paddingBottom: "calc(12px + env(safe-area-inset-bottom, 8px))",
           display: "flex",
           alignItems: "center",
-          gap: 12,
-          background: "rgba(255,255,255,0.015)",
+          gap: 10,
+          padding: "10px 20px",
+          paddingBottom: "calc(10px + env(safe-area-inset-bottom, 8px))",
+          borderTop: `1px solid ${C.border}`,
         }}>
           {/* Avatar */}
           <div style={{
-            width: 38, height: 38,
-            borderRadius: 10,
+            width: 32, height: 32,
+            borderRadius: 9,
             overflow: "hidden",
-            background: "rgba(45,134,89,0.12)",
-            border: "1px solid rgba(45,134,89,0.22)",
+            background: "rgba(45,134,89,0.1)",
+            border: "1px solid rgba(45,134,89,0.18)",
             color: C.green,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontWeight: 800,
-            fontSize: 14,
+            fontWeight: 700,
+            fontSize: 13,
             flexShrink: 0,
           }}>
             {user?.avatar ? (
@@ -449,7 +438,7 @@ export default function MobileDrawer({ isOpen, onClose }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
               fontSize: 13,
-              fontWeight: 700,
+              fontWeight: 600,
               color: C.white,
               whiteSpace: "nowrap",
               overflow: "hidden",
@@ -461,35 +450,32 @@ export default function MobileDrawer({ isOpen, onClose }) {
             <div style={{
               fontSize: 11,
               color: C.dim,
-              marginTop: 2,
+              marginTop: 1,
               textTransform: "capitalize",
             }}>
               {roleName}
             </div>
           </div>
 
-          {/* Logout */}
+          {/* Logout — icon only */}
           <button
             onClick={handleLogout}
             title="Sair da conta"
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "8px 13px",
+              width: 30, height: 30,
               borderRadius: 8,
               border: `1px solid ${C.border}`,
               background: "transparent",
               color: C.muted,
-              fontSize: 12,
-              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               cursor: "pointer",
-              fontFamily: "inherit",
               flexShrink: 0,
+              opacity: 0.7,
             }}
           >
-            <LogOut size={13} />
-            Sair
+            <LogOut size={14} />
           </button>
         </div>
       </div>

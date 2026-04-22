@@ -1,345 +1,253 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
-  Shield,
-  FileCheck,
-  Clock3,
-  CheckCircle2,
-  XCircle,
-  Search,
-  RefreshCw,
-  ChevronRight,
-  Eye,
-  ScrollText,
-  AlertTriangle,
-  Users,
-  Filter,
+  AreaChart, Area, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import {
+  LayoutDashboard, TrendingUp, TrendingDown, RefreshCw,
+  Wallet, Receipt, Users, ArrowRightLeft, Percent,
+  AlertTriangle, ShieldOff, Clock, Ban,
 } from "lucide-react";
 import C from "../../constants/colors";
-import Card from "../../components/ui/Card";
-import PageHeader from "../../components/ui/PageHeader";
-import { useAuth } from "../../context/AuthContext";
-import api from "../../services/api";
+import {
+  getDashboardOverview,
+  getDashboardVolumeSeries,
+  getDashboardRevenueSeries,
+  getDashboardTopSellers,
+  getDashboardAttention,
+} from "../../services/admin.service";
 
-/* ─── Scoped styles — ONLY CSS variables, no hardcoded colors ───── */
+/* ─── Palette refs (não usar CSS vars dentro de SVG/recharts) ─── */
+const P = {
+  green:       "#2D8659",
+  greenBright: "#34A065",
+  gold:        "#81B61C",
+  error:       "#E5484D",
+  card:        "#141417",
+  cardSoft:    "#1C1C21",
+  border:      "rgba(255,255,255,0.07)",
+  borderMed:   "rgba(255,255,255,0.14)",
+  muted:       "#5A6A7E",
+  dim:         "#2D3A48",
+  white:       "#FFFFFF",
+  bg:          "#09090B",
+};
+
+/* ─── Helpers ─────────────────────────────────────────────────── */
+function fmtBRL(v = 0) {
+  return Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtK(v = 0) {
+  const n = Number(v || 0);
+  if (n >= 1_000_000) return `R$ ${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000)     return `R$ ${(n / 1_000).toFixed(1)}K`;
+  return `R$ ${fmtBRL(n)}`;
+}
+
+function fmtDate(dateStr) {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
+function fmtFull(dateStr) {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function getStatusBadge(status) {
+  if (status === "blocked")  return { label: "Bloqueado", color: P.error,  bg: "rgba(229,72,77,0.12)" };
+  if (status === "inactive") return { label: "Inativo",   color: P.gold,   bg: "rgba(129,182,28,0.10)" };
+  return                            { label: "Ativo",     color: P.green,  bg: "rgba(45,134,89,0.12)" };
+}
+
+function getAccountStatusLabel(v) {
+  const map = {
+    email_pending:    "Email pendente",
+    basic_user:       "Básico",
+    kyc_pending:      "KYC pendente",
+    kyc_under_review: "KYC em análise",
+    kyc_approved:     "KYC aprovado",
+    kyc_rejected:     "KYC rejeitado",
+    seller_active:    "Seller ativo",
+    suspended:        "Suspenso",
+  };
+  return map[v] || v || "—";
+}
+
+/* ─── Scoped styles ───────────────────────────────────────────── */
 const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&family=DM+Mono:wght@400;500&display=swap');
-
-  .adm { font-family: 'DM Sans', system-ui, sans-serif; }
-
-  /* ── Hero header ── */
-  .adm-hero {
-    position: relative;
-    overflow: hidden;
-    border-radius: 18px;
-    margin-bottom: 20px;
-    padding: 24px 26px 0;
-    background: var(--c-card);
-    border: 1px solid var(--c-border-strong);
-  }
-
-  /* Subtle radial accent */
-  .adm-hero::before {
-    content: '';
-    position: absolute;
-    top: -80px; left: -80px;
-    width: 320px; height: 320px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(45,134,89,0.09) 0%, transparent 65%);
-    pointer-events: none;
-  }
-
-  /* Dot-grid texture */
-  .adm-hero-dots {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    opacity: 0.35;
-    background-image: radial-gradient(circle, var(--c-border-strong) 1px, transparent 1px);
-    background-size: 22px 22px;
-  }
-
-  /* ── Tabs ── */
-  .adm-tabs {
-    display: flex;
-    margin-top: 22px;
-    border-top: 1px solid var(--c-border);
-    position: relative;
-    z-index: 1;
-  }
-  .adm-tab {
-    padding: 11px 20px;
-    font-size: 13px;
-    font-weight: 700;
-    font-family: 'DM Sans', system-ui, sans-serif;
-    background: none;
-    border: none;
-    cursor: pointer;
-    position: relative;
-    color: var(--c-text-muted);
-    transition: color 0.2s;
-    letter-spacing: 0.01em;
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-  }
-  .adm-tab.on { color: var(--c-text-primary); }
-  .adm-tab.on::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 20px; right: 20px;
-    height: 2px;
-    border-radius: 2px 2px 0 0;
-    background: #2D8659;
-  }
-
-  /* ── Stat card ── */
-  .adm-stat {
-    background: var(--c-card);
-    border: 1px solid var(--c-border);
-    border-radius: 16px;
-    padding: 18px 18px 14px;
-    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
-  }
-  .adm-stat:hover {
-    transform: translateY(-3px);
-    border-color: var(--c-border-strong);
-    box-shadow: 0 10px 28px rgba(0,0,0,0.12);
-  }
-
-  /* ── Progress bar ── */
-  @keyframes adm-fill {
-    from { width: 0%; }
-    to   { width: var(--tw); }
-  }
-  .adm-bar-fill { animation: adm-fill 0.85s cubic-bezier(0.22,1,0.36,1) forwards; }
-
-  /* ── Pulse dot ── */
-  @keyframes adm-pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50%       { opacity: 0.5; transform: scale(0.78); }
-  }
-  .adm-dot { animation: adm-pulse 2.2s ease-in-out infinite; }
-
-  /* ── KYC row ── */
-  .adm-kyc-row {
-    width: 100%;
-    text-align: left;
-    border-radius: 12px;
-    padding: 13px 15px;
-    cursor: pointer;
-    font-family: 'DM Sans', system-ui, sans-serif;
-    background: var(--c-card-soft);
-    border: 1px solid var(--c-border);
-    transition: border-color 0.15s, transform 0.15s;
-  }
-  .adm-kyc-row:hover  { transform: translateX(3px); border-color: var(--c-border-strong); }
-  .adm-kyc-row.sel    { background: rgba(45,134,89,0.07); border-color: rgba(45,134,89,0.28); }
-
-  /* ── Fade up ── */
-  @keyframes adm-up {
-    from { opacity: 0; transform: translateY(6px); }
+  @keyframes dash-up {
+    from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  .adm-up { animation: adm-up 0.28s ease both; }
-
-  /* ── Spinner ── */
-  @keyframes adm-spin { to { transform: rotate(360deg); } }
-  .adm-spin { animation: adm-spin 0.75s linear infinite; }
-
-  /* ── Review action button ── */
-  .adm-action-btn {
-    border-radius: 11px;
-    padding: 11px 14px;
-    font-size: 12px;
-    font-weight: 800;
-    font-family: 'DM Sans', system-ui, sans-serif;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    cursor: pointer;
-    transition: filter 0.15s, transform 0.15s;
+  @keyframes dash-spin { to { transform: rotate(360deg); } }
+  @keyframes dash-pulse {
+    0%,100% { opacity: 1; }
+    50%      { opacity: 0.45; }
   }
-  .adm-action-btn:hover:not(:disabled) { filter: brightness(1.12); transform: scale(1.02); }
-  .adm-action-btn:active:not(:disabled) { transform: scale(0.98); }
-  .adm-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  /* ── Audit row ── */
-  .adm-audit-row {
-    background: var(--c-card-soft);
+  .dash-up   { animation: dash-up 0.28s ease both; }
+  .dash-spin { animation: dash-spin 0.75s linear infinite; }
+  .dash-live { animation: dash-pulse 2.2s ease-in-out infinite; }
+  .dash-kpi {
+    background: var(--c-card);
     border: 1px solid var(--c-border);
-    border-radius: 13px;
-    padding: 13px 15px;
-    transition: border-color 0.15s;
+    border-radius: 18px;
+    padding: 20px 20px 16px;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    cursor: default;
   }
-  .adm-audit-row:hover { border-color: var(--c-border-strong); }
-
-  /* ── Mono ── */
-  .mono { font-family: 'DM Mono', monospace; }
+  .dash-kpi:hover {
+    transform: translateY(-3px);
+    border-color: var(--c-border-strong);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.18);
+  }
+  .dash-panel {
+    background: var(--c-card);
+    border: 1px solid var(--c-border);
+    border-radius: 18px;
+    padding: 20px;
+  }
+  .dash-seller-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: 13px;
+    border: 1px solid var(--c-border);
+    background: var(--c-card-soft);
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .dash-seller-row:hover { border-color: var(--c-border-strong); transform: translateX(2px); }
+  .dash-attn-row {
+    padding: 10px 13px;
+    border-radius: 12px;
+    border: 1px solid var(--c-border);
+    background: var(--c-card-soft);
+    transition: border-color 0.15s;
+    margin-bottom: 7px;
+  }
+  .dash-attn-row:last-child { margin-bottom: 0; }
+  .dash-attn-row:hover { border-color: var(--c-border-strong); }
+  .dash-period-btn {
+    border: 1px solid var(--c-border);
+    background: var(--c-input-deep);
+    color: var(--c-text-muted);
+    border-radius: 10px;
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    letter-spacing: 0.04em;
+  }
+  .dash-period-btn.on {
+    border-color: rgba(45,134,89,0.45);
+    background: rgba(45,134,89,0.10);
+    color: #2D8659;
+  }
 `;
 
-/* ─── Helpers ─────────────────────────────────────────────────────*/
-function fmtDate(date) {
-  if (!date) return "—";
-  const d = new Date(date);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("pt-BR", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
-}
-
-function getKycBadge(status) {
-  const s = String(status || "").toLowerCase();
-  if (s === "approved")     return { label: "Aprovado",   bg: "rgba(45,134,89,0.15)",  color: "#2D8659", dot: "#2D8659" };
-  if (s === "rejected")     return { label: "Rejeitado",  bg: "rgba(229,72,77,0.12)",  color: "#E5484D", dot: "#E5484D" };
-  if (s === "under_review") return { label: "Em análise", bg: "rgba(212,175,55,0.14)", color: "#D4AF37", dot: "#D4AF37" };
-  return { label: "Pendente", bg: "rgba(100,116,139,0.12)", color: C.muted, dot: C.muted };
-}
-
-function getAuditLabel(action) {
-  const s = String(action || "").toLowerCase();
-  if (s === "kyc_submitted")    return "KYC enviado";
-  if (s === "kyc_under_review") return "KYC em análise";
-  if (s === "kyc_approved")     return "KYC aprovado";
-  if (s === "kyc_rejected")     return "KYC rejeitado";
-  return s || "—";
-}
-
-/* ─── Sub-components ──────────────────────────────────────────────*/
-function LiveDot({ color = "#2D8659" }) {
-  return (
-    <span className="adm-dot" style={{
-      width: 6, height: 6, borderRadius: "50%",
-      background: color, display: "inline-block", flexShrink: 0,
-    }} />
-  );
-}
-
-function SectionLabel({ children }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-      <span style={{
-        fontSize: 10, fontWeight: 800, textTransform: "uppercase",
-        letterSpacing: "0.12em", color: C.dim, whiteSpace: "nowrap",
-      }}>
-        {children}
-      </span>
-      <div style={{ flex: 1, height: 1, background: C.border }} />
-    </div>
-  );
-}
-
-function StatusPill({ label, bg, color, dot }) {
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 6,
-      padding: "5px 11px", borderRadius: 999,
-      background: bg, color, fontSize: 11, fontWeight: 700,
-      whiteSpace: "nowrap", flexShrink: 0,
-    }}>
-      <LiveDot color={dot} />
-      {label}
-    </span>
-  );
-}
-
-function MiniInfo({ label, value }) {
+/* ─── Custom recharts tooltip ─────────────────────────────────── */
+function ChartTooltip({ active, payload, label, prefix = "R$", color = P.green }) {
+  if (!active || !payload?.length) return null;
   return (
     <div style={{
-      background: C.bg,
-      border: `1px solid ${C.border}`,
-      borderRadius: 9, padding: "7px 11px",
+      background: P.cardSoft, border: `1px solid ${P.borderMed}`,
+      borderRadius: 12, padding: "10px 14px",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
     }}>
-      <div style={{
-        fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
-        textTransform: "uppercase", color: C.dim, marginBottom: 4,
-      }}>
+      <div style={{ fontSize: 10, color: P.muted, marginBottom: 5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
         {label}
       </div>
-      <div className="mono" style={{ fontSize: 11, fontWeight: 500, color: C.light }}>
-        {value || "—"}
-      </div>
+      {payload.map((p, i) => (
+        <div key={i} style={{ fontSize: 15, fontWeight: 900, color, fontVariantNumeric: "tabular-nums" }}>
+          {prefix} {fmtBRL(p.value)}
+        </div>
+      ))}
     </div>
   );
 }
 
-function StatCard({ title, value, helper, icon, accent = "#2D8659", total, index = 0 }) {
-  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+/* ─── KPI card ────────────────────────────────────────────────── */
+function KpiCard({ icon, label, value, delta, helper, accent, delay = 0 }) {
+  const up      = delta > 0;
+  const neutral = delta === 0 || delta == null;
+  const hasData = typeof delta === "number";
+
   return (
-    <div className="adm-stat adm-up" style={{ animationDelay: `${index * 55}ms` }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+    <div className="dash-kpi dash-up" style={{ animationDelay: `${delay}ms` }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
         <div style={{
-          width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+          width: 38, height: 38, borderRadius: 11, flexShrink: 0,
           background: `${accent}18`, border: `1px solid ${accent}30`,
           display: "flex", alignItems: "center", justifyContent: "center",
           color: accent,
         }}>
           {icon}
         </div>
-        {total > 0 && (
-          <span style={{
-            fontSize: 10, fontWeight: 700, color: accent,
-            background: `${accent}14`, padding: "3px 7px", borderRadius: 6,
+
+        {hasData && !neutral && (
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 4,
+            padding: "4px 9px", borderRadius: 8, fontSize: 11, fontWeight: 800,
+            background: up ? "rgba(45,134,89,0.10)" : "rgba(229,72,77,0.10)",
+            color: up ? P.green : P.error,
+            border: `1px solid ${up ? "rgba(45,134,89,0.20)" : "rgba(229,72,77,0.20)"}`,
           }}>
-            {pct}%
-          </span>
+            {up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+            {Math.abs(delta)}%
+          </div>
         )}
       </div>
 
       <div style={{
-        fontSize: 34, fontWeight: 900, color: C.white,
-        letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 3,
+        fontSize: 30, fontWeight: 900, color: C.white,
+        letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 4,
         fontVariantNumeric: "tabular-nums",
       }}>
         {value}
       </div>
-
       <div style={{
-        fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-        letterSpacing: "0.09em", color: C.dim, marginBottom: 10,
+        fontSize: 10, fontWeight: 800, textTransform: "uppercase",
+        letterSpacing: "0.10em", color: C.dim, marginBottom: 8,
       }}>
-        {title}
+        {label}
       </div>
-
-      <div style={{ height: 3, background: C.border, borderRadius: 2, overflow: "hidden" }}>
-        <div className="adm-bar-fill" style={{
-          height: "100%",
-          background: `linear-gradient(90deg, ${accent}55, ${accent})`,
-          borderRadius: 2,
-          "--tw": `${pct}%`,
-        }} />
-      </div>
-
-      <div style={{ fontSize: 11, color: C.dim, marginTop: 8 }}>{helper}</div>
+      <div style={{ fontSize: 11, color: C.muted }}>{helper}</div>
     </div>
   );
 }
 
-function EmptyState({ text, loading }) {
+/* ─── Section header ──────────────────────────────────────────── */
+function SectionHeader({ title, sub }) {
   return (
-    <div style={{ padding: "36px 0", textAlign: "center" }}>
-      {loading ? (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-          <div className="adm-spin" style={{
-            width: 26, height: 26, borderRadius: "50%",
-            border: `2px solid ${C.border}`, borderTopColor: "#2D8659",
-          }} />
-          <span style={{ fontSize: 12, color: C.dim }}>{text}</span>
-        </div>
-      ) : (
-        <>
-          <div style={{
-            width: 42, height: 42, borderRadius: "50%",
-            background: C.cardSoft, border: `1px solid ${C.border}`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 12px", color: C.dim,
-          }}>
-            <Filter size={17} />
-          </div>
-          <div style={{ fontSize: 13, color: C.dim }}>{text}</div>
-        </>
-      )}
+    <div style={{ marginBottom: 16 }}>
+      <div style={{
+        fontSize: 13, fontWeight: 800, color: C.white,
+        letterSpacing: "-0.01em", marginBottom: 3,
+      }}>
+        {title}
+      </div>
+      {sub && <div style={{ fontSize: 11, color: C.muted }}>{sub}</div>}
+    </div>
+  );
+}
+
+/* ─── Mini spinner ────────────────────────────────────────────── */
+function Spinner() {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 0" }}>
+      <div className="dash-spin" style={{
+        width: 24, height: 24, borderRadius: "50%",
+        border: `2px solid ${P.border}`, borderTopColor: P.green,
+      }} />
     </div>
   );
 }
@@ -348,584 +256,524 @@ function EmptyState({ text, loading }) {
    MAIN COMPONENT
 ══════════════════════════════════════════════════════════════════════ */
 export default function AdminDashboard({ isMobile }) {
-  const { user } = useAuth();
+  const [period,      setPeriod]      = useState(30);
+  const [loading,     setLoading]     = useState(true);
+  const [overview,    setOverview]    = useState(null);
+  const [volSeries,   setVolSeries]   = useState([]);
+  const [revSeries,   setRevSeries]   = useState([]);
+  const [topSellers,  setTopSellers]  = useState([]);
+  const [attention,   setAttention]   = useState({ blocked: [], kycPending: [], noTwoFA: [] });
+  const [error,       setError]       = useState("");
+  const [refreshedAt, setRefreshedAt] = useState(null);
 
-  const [activeTab,       setActiveTab]       = useState("kyc");
-  const [loadingKyc,      setLoadingKyc]      = useState(true);
-  const [loadingLogs,     setLoadingLogs]      = useState(true);
-  const [submitting,      setSubmitting]       = useState(false);
-  const [kycStatusFilter, setKycStatusFilter]  = useState("pending");
-  const [kycRows,         setKycRows]          = useState([]);
-  const [selectedKyc,     setSelectedKyc]      = useState(null);
-  const [reviewReason,    setReviewReason]     = useState("");
-  const [feedback,        setFeedback]         = useState("");
-  const [auditAction,     setAuditAction]      = useState("all");
-  const [auditSearch,     setAuditSearch]      = useState("");
-  const [auditRows,       setAuditRows]        = useState([]);
-  const [auditPagination, setAuditPagination]  = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
-
-  useEffect(() => { document.title = "Backoffice • OrionPay"; }, []);
-
-  async function loadKyc(showLoading = true) {
+  const load = useCallback(async (p = period, showLoading = true) => {
     try {
-      if (showLoading) setLoadingKyc(true);
-      const query = kycStatusFilter && kycStatusFilter !== "all"
-        ? `?status=${encodeURIComponent(kycStatusFilter)}` : "";
-      const { data } = await api.get(`/kyc/admin/list${query}`);
-      const rows = Array.isArray(data?.kyc) ? data.kyc : [];
-      setKycRows(rows);
-      if (selectedKyc?._id) {
-        const fresh = rows.find(i => i._id === selectedKyc._id);
-        setSelectedKyc(fresh || null);
-      }
-    } catch { setKycRows([]); }
-    finally { if (showLoading) setLoadingKyc(false); }
-  }
+      if (showLoading) setLoading(true);
+      setError("");
 
-  async function loadAuditLogs(page = 1, showLoading = true) {
-    try {
-      if (showLoading) setLoadingLogs(true);
-      const p = new URLSearchParams();
-      p.set("page", String(page)); p.set("limit", "20");
-      if (auditAction !== "all") p.set("action", auditAction);
-      if (auditSearch.trim()) p.set("search", auditSearch.trim());
-      const { data } = await api.get(`/kyc/admin/audit-logs?${p.toString()}`);
-      setAuditRows(Array.isArray(data?.items) ? data.items : []);
-      setAuditPagination(data?.pagination || { page: 1, limit: 20, total: 0, totalPages: 1 });
-    } catch { setAuditRows([]); }
-    finally { if (showLoading) setLoadingLogs(false); }
-  }
+      const [ov, vol, rev, top, attn] = await Promise.all([
+        getDashboardOverview(p),
+        getDashboardVolumeSeries(p),
+        getDashboardRevenueSeries(p),
+        getDashboardTopSellers(p),
+        getDashboardAttention(),
+      ]);
 
-  useEffect(() => { loadKyc(true); }, [kycStatusFilter]);
-  useEffect(() => { loadAuditLogs(1, true); }, [auditAction]);
-  useEffect(() => {
-    const t = setTimeout(() => loadAuditLogs(1, true), 350);
-    return () => clearTimeout(t);
-  }, [auditSearch]);
-
-  const kycSummary = useMemo(() => ({
-    pending:     kycRows.filter(i => i.status === "pending").length,
-    underReview: kycRows.filter(i => i.status === "under_review").length,
-    approved:    kycRows.filter(i => i.status === "approved").length,
-    rejected:    kycRows.filter(i => i.status === "rejected").length,
-    total:       kycRows.length,
-  }), [kycRows]);
-
-  async function openKycDetails(id) {
-    try {
-      const { data } = await api.get(`/kyc/admin/${id}`);
-      setSelectedKyc(data?.kyc || null);
-      setReviewReason(""); setFeedback("");
-    } catch (err) {
-      setFeedback(err?.response?.data?.msg || "Erro ao carregar detalhes do KYC.");
-    }
-  }
-
-  async function handleReview(decision) {
-    if (!selectedKyc?._id) return;
-    if (decision === "rejected" && !reviewReason.trim()) {
-      setFeedback("Informe o motivo da rejeição antes de continuar.");
-      return;
-    }
-    try {
-      setSubmitting(true); setFeedback("");
-      const { data } = await api.patch(`/kyc/admin/${selectedKyc._id}/review`, {
-        decision, reason: decision === "rejected" ? reviewReason.trim() : "",
+      setOverview(ov);
+      setVolSeries(Array.isArray(vol?.series) ? vol.series : []);
+      setRevSeries(Array.isArray(rev?.series) ? rev.series : []);
+      setTopSellers(Array.isArray(top?.items) ? top.items : []);
+      setAttention({
+        blocked:    Array.isArray(attn?.blocked)    ? attn.blocked    : [],
+        kycPending: Array.isArray(attn?.kycPending) ? attn.kycPending : [],
+        noTwoFA:    Array.isArray(attn?.noTwoFA)    ? attn.noTwoFA    : [],
       });
-      setFeedback(data?.msg || "Status atualizado com sucesso.");
-      await Promise.all([loadKyc(false), loadAuditLogs(1, false)]);
-      await openKycDetails(selectedKyc._id);
+      setRefreshedAt(new Date());
     } catch (err) {
-      setFeedback(err?.response?.data?.msg || "Erro ao atualizar o status do KYC.");
-    } finally { setSubmitting(false); }
+      console.error("Erro no dashboard:", err);
+      setError("Erro ao carregar dados do dashboard.");
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  }, [period]);
+
+  useEffect(() => {
+    document.title = "Dashboard • OrionPay";
+    load(period);
+  }, [period]);
+
+  function changePeriod(p) {
+    setPeriod(p);
   }
 
-  const isErr = (msg) => String(msg || "").toLowerCase().includes("erro");
+  const attnTotal =
+    attention.blocked.length +
+    attention.kycPending.length +
+    attention.noTwoFA.length;
 
-  /* ── Shared inline styles — ALL CSS vars ─────────────────────── */
-  const panelStyle = {
-    background: C.card,
-    border: `1px solid ${C.border}`,
-    borderRadius: 18,
-    padding: 22,
-  };
+  /* ── KPI data ─────────────────────────────────────────────── */
+  const kpis = overview ? [
+    {
+      icon:   <Wallet size={16} />,
+      label:  "Volume processado",
+      value:  `R$ ${fmtBRL(overview.volumeTotal)}`,
+      delta:  overview.deltas?.volume,
+      helper: `Transações aprovadas — ${period}d`,
+      accent: P.green,
+    },
+    {
+      icon:   <Percent size={16} />,
+      label:  "Receita em taxas",
+      value:  `R$ ${fmtBRL(overview.revenueTotal)}`,
+      delta:  overview.deltas?.revenue,
+      helper: `Taxas coletadas — ${period}d`,
+      accent: P.gold,
+    },
+    {
+      icon:   <ArrowRightLeft size={16} />,
+      label:  "Transações",
+      value:  String(overview.transactionsTotal ?? 0),
+      delta:  overview.deltas?.transactions,
+      helper: `Operações aprovadas — ${period}d`,
+      accent: P.green,
+    },
+    {
+      icon:   <Users size={16} />,
+      label:  "Sellers ativos",
+      value:  String(overview.activeSellers ?? 0),
+      delta:  null,
+      helper: `De ${overview.totalSellers ?? 0} contas no total`,
+      accent: P.gold,
+    },
+    {
+      icon:   <Receipt size={16} />,
+      label:  "Ticket médio",
+      value:  `R$ ${fmtBRL(overview.ticketAverage)}`,
+      delta:  null,
+      helper: `Média por transação — ${period}d`,
+      accent: P.green,
+    },
+  ] : [];
 
-  const inputStyle = {
-    background: C.inputDeep,
-    border: `1px solid ${C.border}`,
-    color: C.white,
-    borderRadius: 10,
-    padding: "9px 12px",
-    fontFamily: "'DM Sans', system-ui, sans-serif",
-    fontSize: 13,
-    outline: "none",
-    cursor: "pointer",
-  };
+  /* ── Chart config ─────────────────────────────────────────── */
+  const chartHeight = isMobile ? 180 : 220;
+  const xTickStyle  = { fill: P.dim, fontSize: 10, fontWeight: 600 };
+  const yTickStyle  = { fill: P.muted, fontSize: 10 };
 
-  const refreshBtnStyle = {
-    ...inputStyle,
-    display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 700,
-  };
+  /* ─── Reducer for x-axis: show only every N-th label ──────── */
+  const volLabels = volSeries.map((d) => fmtDate(d.date));
+  const revLabels = revSeries.map((d) => fmtDate(d.date));
 
-  /* ── Render ───────────────────────────────────────────────────── */
+  function tickFormatter(val, series) {
+    const idx = series.indexOf(val);
+    const step = series.length > 60 ? 14 : series.length > 30 ? 7 : series.length > 14 ? 3 : 1;
+    return idx % step === 0 ? val : "";
+  }
+
   return (
-    <div className="adm">
+    <div>
       <style>{STYLES}</style>
 
-      {/* ── HERO HEADER ─────────────────────────────────────────── */}
-      <div className="adm-hero">
-        <div className="adm-hero-dots" />
+      {/* ── HERO HEADER ──────────────────────────────────────────── */}
+      <div style={{
+        position: "relative", overflow: "hidden",
+        borderRadius: 18, marginBottom: 20,
+        padding: isMobile ? "18px 16px 0" : "22px 24px 0",
+        background: C.card, border: `1px solid ${C.border}`,
+      }}>
+        {/* Dot grid */}
+        <div style={{
+          position: "absolute", inset: 0, pointerEvents: "none",
+          opacity: 0.30,
+          backgroundImage: `radial-gradient(circle, ${P.borderMed} 1px, transparent 1px)`,
+          backgroundSize: "22px 22px",
+        }} />
+        {/* Radial accent */}
+        <div style={{
+          position: "absolute", top: -80, left: -80,
+          width: 320, height: 320, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(45,134,89,0.08) 0%, transparent 65%)",
+          pointerEvents: "none",
+        }} />
+
         <div style={{ position: "relative", zIndex: 1 }}>
-
-          {/* Top bar */}
+          {/* Badge */}
           <div style={{
-            display: "flex", justifyContent: "space-between",
-            alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 18,
+            display: "inline-flex", alignItems: "center", gap: 7,
+            padding: "5px 11px", borderRadius: 999, marginBottom: 14,
+            border: "1px solid rgba(45,134,89,0.22)",
+            background: "rgba(45,134,89,0.07)", color: P.green,
+            fontSize: 10, fontWeight: 800, letterSpacing: "0.12em",
+            textTransform: "uppercase",
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{
-                width: 26, height: 26, borderRadius: 7,
-                background: "rgba(45,134,89,0.15)",
-                border: "1px solid rgba(45,134,89,0.30)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <Shield size={13} color="#2D8659" />
-              </div>
-              <span style={{
-                fontSize: 10, fontWeight: 800, letterSpacing: "0.14em",
-                textTransform: "uppercase", color: "#2D8659",
-              }}>
-                Backoffice OrionPay
-              </span>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <LiveDot />
-              <span style={{ fontSize: 11, color: "#2D8659", fontWeight: 600 }}>Sistema ativo</span>
-            </div>
+            <LayoutDashboard size={11} />
+            Dashboard Executivo
           </div>
 
-          {/* Title + user chip */}
+          {/* Title row */}
           <div style={{
             display: "flex", justifyContent: "space-between",
-            alignItems: "flex-end", flexWrap: "wrap", gap: 16,
+            alignItems: "flex-end", flexWrap: "wrap", gap: 14, marginBottom: 18,
           }}>
             <div>
               <h1 style={{
                 fontSize: isMobile ? 22 : 28, fontWeight: 900, color: C.white,
-                letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 6,
+                letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 5,
               }}>
-                Painel Administrativo
+                OrionPay — Visão Geral
               </h1>
               <p style={{ fontSize: 13, color: C.muted }}>
-                Gerencie KYC, revise documentos e acompanhe o log de auditoria
+                Volume, receita, sellers e operações em tempo real
               </p>
             </div>
 
-            <div style={{
-              display: "flex", alignItems: "center", gap: 10,
-              background: C.cardSoft, border: `1px solid ${C.border}`,
-              borderRadius: 12, padding: "9px 14px",
-            }}>
-              <div style={{
-                width: 30, height: 30, borderRadius: 8,
-                background: "rgba(45,134,89,0.15)",
-                border: "1px solid rgba(45,134,89,0.25)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <Users size={14} color="#2D8659" />
-              </div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: C.white }}>
-                  {user?.name || "Administrador"}
-                </div>
-                <div style={{ fontSize: 10, color: "#2D8659", fontWeight: 600 }}>
-                  {user?.role || "admin"}
-                </div>
-              </div>
+            {/* Period + refresh */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              {[7, 30, 90].map((d) => (
+                <button
+                  key={d}
+                  className={`dash-period-btn${period === d ? " on" : ""}`}
+                  onClick={() => changePeriod(d)}
+                >
+                  {d}d
+                </button>
+              ))}
+              <button
+                onClick={() => load(period, true)}
+                disabled={loading}
+                style={{
+                  border: `1px solid ${C.border}`,
+                  background: C.inputDeep, borderRadius: 10,
+                  padding: "7px 12px", cursor: loading ? "not-allowed" : "pointer",
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  fontSize: 12, fontWeight: 700, color: C.muted, fontFamily: "inherit",
+                  opacity: loading ? 0.5 : 1,
+                }}
+              >
+                <RefreshCw size={12} className={loading ? "dash-spin" : ""} />
+                {loading ? "..." : "Atualizar"}
+              </button>
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="adm-tabs">
-            {[
-              { key: "kyc",   label: "Revisão de KYC",   icon: <FileCheck size={13} /> },
-              { key: "audit", label: "Log de Auditoria", icon: <ScrollText size={13} /> },
-            ].map(t => (
-              <button
-                key={t.key}
-                className={`adm-tab${activeTab === t.key ? " on" : ""}`}
-                onClick={() => setActiveTab(t.key)}
-              >
-                {t.icon}
-                {t.label}
-              </button>
-            ))}
+          {/* Meta bar */}
+          <div style={{
+            borderTop: `1px solid ${C.border}`, paddingTop: 10, paddingBottom: 14,
+            display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div className="dash-live" style={{ width: 6, height: 6, borderRadius: "50%", background: P.green }} />
+              <span style={{ fontSize: 11, color: P.green, fontWeight: 600 }}>Sistema ativo</span>
+            </div>
+            {refreshedAt && (
+              <span style={{ fontSize: 11, color: C.dim }}>
+                Atualizado: {fmtFull(refreshedAt)}
+              </span>
+            )}
+            {attnTotal > 0 && (
+              <span style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                padding: "3px 9px", borderRadius: 999,
+                background: "rgba(229,72,77,0.09)", color: P.error,
+                border: "1px solid rgba(229,72,77,0.20)",
+                fontSize: 10, fontWeight: 800,
+              }}>
+                <AlertTriangle size={10} />
+                {attnTotal} {attnTotal === 1 ? "conta" : "contas"} requer atenção
+              </span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* ── KYC TAB ─────────────────────────────────────────────── */}
-      {activeTab === "kyc" ? (
+      {/* ── ERROR ─────────────────────────────────────────────────── */}
+      {error && (
+        <div style={{
+          marginBottom: 14, borderRadius: 13, padding: "12px 16px",
+          background: "rgba(229,72,77,0.07)", border: "1px solid rgba(229,72,77,0.20)",
+          fontSize: 13, color: P.error,
+        }}>
+          {error}
+        </div>
+      )}
+
+      {/* ── KPI CARDS ─────────────────────────────────────────────── */}
+      {loading ? (
+        <Spinner />
+      ) : (
         <>
-          {/* Stats grid */}
           <div style={{
             display: "grid",
-            gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)",
+            gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)",
             gap: 12, marginBottom: 18,
           }}>
-            <StatCard index={0} title="Pendentes"  value={kycSummary.pending}     helper="Aguardando revisão"  icon={<Clock3 size={15} />}       accent="#2D8659" total={kycSummary.total} />
-            <StatCard index={1} title="Em análise" value={kycSummary.underReview} helper="Revisão manual"       icon={<Eye size={15} />}          accent="#D4AF37" total={kycSummary.total} />
-            <StatCard index={2} title="Aprovados"  value={kycSummary.approved}    helper="Contas liberadas"     icon={<CheckCircle2 size={15} />} accent="#2D8659" total={kycSummary.total} />
-            <StatCard index={3} title="Rejeitados" value={kycSummary.rejected}    helper="Documentos recusados" icon={<XCircle size={15} />}      accent="#E5484D" total={kycSummary.total} />
+            {kpis.map((k, i) => (
+              <KpiCard key={k.label} {...k} delay={i * 50} />
+            ))}
           </div>
 
-          {/* List + Detail */}
+          {/* ── CHARTS ROW ─────────────────────────────────────────── */}
           <div style={{
             display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "1.35fr 0.65fr",
-            gap: 16,
+            gridTemplateColumns: isMobile ? "1fr" : "1.6fr 1fr",
+            gap: 14, marginBottom: 14,
           }}>
-
-            {/* KYC LIST */}
-            <div style={panelStyle}>
-              <div style={{
-                display: "flex", justifyContent: "space-between",
-                alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12,
-              }}>
-                <div>
-                  <SectionLabel>Fila de KYC</SectionLabel>
-                  <p style={{ fontSize: 12, color: C.dim }}>
-                    {kycRows.length} {kycRows.length === 1 ? "solicitação" : "solicitações"} encontradas
-                  </p>
+            {/* Volume area chart */}
+            <div className="dash-panel dash-up">
+              <SectionHeader
+                title="Volume processado por dia"
+                sub={`Transações aprovadas — últimos ${period} dias`}
+              />
+              {volSeries.length === 0 ? (
+                <div style={{ padding: "30px 0", textAlign: "center", fontSize: 12, color: C.dim }}>
+                  Sem dados no período selecionado
                 </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <select value={kycStatusFilter} onChange={e => setKycStatusFilter(e.target.value)} style={inputStyle}>
-                    <option value="all">Todos</option>
-                    <option value="pending">Pendentes</option>
-                    <option value="under_review">Em análise</option>
-                    <option value="approved">Aprovados</option>
-                    <option value="rejected">Rejeitados</option>
-                  </select>
-                  <button onClick={() => loadKyc(true)} style={refreshBtnStyle}>
-                    <RefreshCw size={12} /> Atualizar
-                  </button>
-                </div>
-              </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={chartHeight}>
+                  <AreaChart data={volSeries} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="gradVol" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%"  stopColor={P.green} stopOpacity={0.22} />
+                        <stop offset="95%" stopColor={P.green} stopOpacity={0}    />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={P.border} vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(v) => tickFormatter(fmtDate(v), volLabels)}
+                      tick={xTickStyle}
+                      axisLine={false} tickLine={false}
+                    />
+                    <YAxis
+                      tickFormatter={(v) => fmtK(v)}
+                      tick={yTickStyle}
+                      axisLine={false} tickLine={false}
+                      width={60}
+                    />
+                    <Tooltip content={<ChartTooltip color={P.green} />} />
+                    <Area
+                      type="monotone" dataKey="volume"
+                      stroke={P.green} strokeWidth={2}
+                      fill="url(#gradVol)"
+                      dot={false} activeDot={{ r: 4, fill: P.green, stroke: P.card, strokeWidth: 2 }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
 
-              {loadingKyc ? (
-                <EmptyState text="Carregando KYC..." loading />
-              ) : kycRows.length === 0 ? (
-                <EmptyState text="Nenhum KYC encontrado neste filtro." />
+            {/* Revenue bar chart */}
+            <div className="dash-panel dash-up" style={{ animationDelay: "60ms" }}>
+              <SectionHeader
+                title="Receita diária em taxas"
+                sub={`Taxas coletadas — últimos ${period} dias`}
+              />
+              {revSeries.length === 0 ? (
+                <div style={{ padding: "30px 0", textAlign: "center", fontSize: 12, color: C.dim }}>
+                  Sem dados no período selecionado
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={chartHeight}>
+                  <BarChart data={revSeries} margin={{ top: 4, right: 4, left: 0, bottom: 0 }} barSize={period > 30 ? 3 : 6}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={P.border} vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(v) => tickFormatter(fmtDate(v), revLabels)}
+                      tick={xTickStyle}
+                      axisLine={false} tickLine={false}
+                    />
+                    <YAxis
+                      tickFormatter={(v) => fmtK(v)}
+                      tick={yTickStyle}
+                      axisLine={false} tickLine={false}
+                      width={60}
+                    />
+                    <Tooltip content={<ChartTooltip color={P.gold} />} />
+                    <Bar dataKey="revenue" fill={P.gold} radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+
+          {/* ── BOTTOM ROW: top sellers + attention ────────────────── */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: isMobile ? "1fr" : "1.3fr 1fr",
+            gap: 14,
+          }}>
+            {/* Top sellers */}
+            <div className="dash-panel dash-up" style={{ animationDelay: "80ms" }}>
+              <SectionHeader
+                title="Top sellers por volume"
+                sub={`Ranking — últimos ${period} dias`}
+              />
+
+              {topSellers.length === 0 ? (
+                <div style={{ padding: "24px 0", textAlign: "center", fontSize: 12, color: C.dim }}>
+                  Nenhuma transação no período
+                </div>
               ) : (
                 <div style={{ display: "grid", gap: 8 }}>
-                  {kycRows.map((item, idx) => {
-                    const badge = getKycBadge(item.status);
-                    const u = item.userId || {};
-                    const isSel = selectedKyc?._id === item._id;
+                  {topSellers.map((s, idx) => {
+                    const badge = getStatusBadge(s.status);
                     return (
-                      <button
-                        key={item._id}
-                        className={`adm-kyc-row adm-up${isSel ? " sel" : ""}`}
-                        style={{ animationDelay: `${idx * 40}ms` }}
-                        onClick={() => openKycDetails(item._id)}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
-                          <div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: C.white, marginBottom: 2 }}>
-                              {item.fullName || u.name || "Sem nome"}
-                            </div>
-                            <div className="mono" style={{ fontSize: 11, color: C.dim }}>
-                              {u.email || "Sem email"}
-                            </div>
-                          </div>
-                          <StatusPill {...badge} />
-                        </div>
-
+                      <div key={String(s.userId)} className="dash-seller-row">
+                        {/* Rank */}
                         <div style={{
-                          display: "grid",
-                          gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
-                          gap: 6, marginBottom: 10,
+                          width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                          background: idx < 3 ? "rgba(45,134,89,0.12)" : "rgba(255,255,255,0.04)",
+                          border: `1px solid ${idx < 3 ? "rgba(45,134,89,0.24)" : P.border}`,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 11, fontWeight: 900,
+                          color: idx < 3 ? P.green : C.dim,
                         }}>
-                          <MiniInfo label="Role"    value={u.role || "user"} />
-                          <MiniInfo label="Conta"   value={u.accountStatus} />
-                          <MiniInfo label="Enviado" value={fmtDate(item.submittedAt || item.createdAt)} />
+                          {idx + 1}
                         </div>
 
-                        <div style={{ color: "#2D8659", fontSize: 11, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                          Revisar <ChevronRight size={12} />
+                        {/* Info */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: C.white, marginBottom: 2 }}>
+                            {s.name || "Sem nome"}
+                          </div>
+                          <div style={{ fontSize: 11, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {s.email}
+                          </div>
                         </div>
-                      </button>
+
+                        {/* Metrics */}
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          <div style={{
+                            fontSize: 14, fontWeight: 900, color: C.white,
+                            fontVariantNumeric: "tabular-nums", marginBottom: 2,
+                          }}>
+                            R$ {fmtBRL(s.volume)}
+                          </div>
+                          <div style={{ fontSize: 10, color: C.dim }}>
+                            {s.transactions} txn · R$ {fmtBRL(s.revenue)} fee
+                          </div>
+                        </div>
+
+                        {/* Status pill */}
+                        <span style={{
+                          padding: "4px 9px", borderRadius: 999,
+                          background: badge.bg, color: badge.color,
+                          fontSize: 10, fontWeight: 800, flexShrink: 0,
+                          whiteSpace: "nowrap",
+                        }}>
+                          {badge.label}
+                        </span>
+                      </div>
                     );
                   })}
                 </div>
               )}
             </div>
 
-            {/* KYC DETAIL */}
-            <div style={{ ...panelStyle, height: "fit-content", position: "sticky", top: 20 }}>
-              <SectionLabel>Revisão</SectionLabel>
-              <p style={{ fontSize: 12, color: C.dim, marginBottom: 16 }}>
-                {selectedKyc ? "Analise os dados e tome uma decisão" : "Selecione um KYC na lista"}
-              </p>
+            {/* Attention */}
+            <div className="dash-panel dash-up" style={{ animationDelay: "100ms" }}>
+              <SectionHeader
+                title="Contas — atenção"
+                sub="Ações operacionais recomendadas"
+              />
 
-              {!selectedKyc ? (
-                <EmptyState text="Selecione um KYC na lista." />
+              {attnTotal === 0 ? (
+                <div style={{
+                  padding: "28px 16px", textAlign: "center",
+                  borderRadius: 14, border: `1px solid rgba(45,134,89,0.15)`,
+                  background: "rgba(45,134,89,0.05)",
+                }}>
+                  <div style={{ fontSize: 12, color: P.green, fontWeight: 700 }}>
+                    Tudo em ordem
+                  </div>
+                  <div style={{ fontSize: 11, color: C.dim, marginTop: 4 }}>
+                    Nenhuma conta requer atenção no momento
+                  </div>
+                </div>
               ) : (
-                <div style={{ display: "grid", gap: 10 }}>
-                  {[
-                    ["Nome",      selectedKyc?.fullName],
-                    ["Email",     selectedKyc?.userId?.email],
-                    ["Documento", selectedKyc?.documentNumber],
-                    ["Tipo",      String(selectedKyc?.documentType || "").toUpperCase()],
-                  ].map(([k, v]) => (
-                    <div key={k} style={{
-                      display: "flex", justifyContent: "space-between", alignItems: "flex-start",
-                      padding: "8px 0", borderBottom: `1px solid ${C.border}`,
-                    }}>
-                      <span style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>{k}</span>
-                      <span className="mono" style={{
-                        fontSize: 11, fontWeight: 500, color: C.light,
-                        textAlign: "right", maxWidth: "60%", wordBreak: "break-all",
+                <div style={{ display: "grid", gap: 16 }}>
+                  {/* Blocked */}
+                  {attention.blocked.length > 0 && (
+                    <div>
+                      <div style={{
+                        display: "flex", alignItems: "center", gap: 7, marginBottom: 9,
                       }}>
-                        {v || "—"}
-                      </span>
-                    </div>
-                  ))}
-
-                  <div style={{ paddingTop: 4 }}>
-                    <SectionLabel>Arquivos</SectionLabel>
-                    {[
-                      ["Selfie",             selectedKyc?.selfieFile],
-                      ["Documento",          selectedKyc?.documentFile],
-                      ["Selfie + documento", selectedKyc?.livenessFile],
-                      ["Comprovante",        selectedKyc?.addressProofFile],
-                    ].map(([label, href]) => (
-                      <div key={label} style={{
-                        display: "flex", justifyContent: "space-between", alignItems: "center",
-                        padding: "7px 0", borderBottom: `1px solid ${C.border}`,
-                      }}>
-                        <span style={{ fontSize: 11, color: C.muted }}>{label}</span>
-                        <a
-                          href={href || "#"} target="_blank" rel="noreferrer"
-                          style={{
-                            color: href ? "#2D8659" : C.dim,
-                            fontSize: 11, fontWeight: 700, textDecoration: "none",
-                            pointerEvents: href ? "auto" : "none",
-                          }}
-                        >
-                          {href ? "Ver arquivo →" : "Indisponível"}
-                        </a>
+                        <Ban size={12} color={P.error} />
+                        <span style={{ fontSize: 10, fontWeight: 800, color: P.error, textTransform: "uppercase", letterSpacing: "0.10em" }}>
+                          Bloqueadas ({attention.blocked.length})
+                        </span>
                       </div>
-                    ))}
-                  </div>
-
-                  <div>
-                    <label style={{
-                      fontSize: 10, fontWeight: 800, textTransform: "uppercase",
-                      letterSpacing: "0.1em", color: C.dim, display: "block", marginBottom: 8,
-                    }}>
-                      Motivo da rejeição
-                    </label>
-                    <textarea
-                      value={reviewReason}
-                      onChange={e => setReviewReason(e.target.value)}
-                      placeholder="Preencha apenas se for rejeitar..."
-                      style={{
-                        width: "100%", minHeight: 80, resize: "vertical",
-                        background: C.inputDeep, border: `1px solid ${C.border}`,
-                        borderRadius: 10, padding: "10px 12px",
-                        color: C.white, fontFamily: "'DM Sans', system-ui, sans-serif",
-                        fontSize: 13, outline: "none", lineHeight: 1.5,
-                      }}
-                    />
-                  </div>
-
-                  {feedback && (
-                    <div style={{
-                      borderRadius: 10, padding: "10px 14px", fontSize: 12, lineHeight: 1.6,
-                      background: isErr(feedback) ? "rgba(229,72,77,0.07)" : "rgba(45,134,89,0.07)",
-                      border: `1px solid ${isErr(feedback) ? "rgba(229,72,77,0.20)" : "rgba(45,134,89,0.20)"}`,
-                      color: isErr(feedback) ? "#E5484D" : "#2D8659",
-                    }}>
-                      {feedback}
+                      {attention.blocked.map((u) => (
+                        <div key={u.id} className="dash-attn-row">
+                          <div style={{ fontSize: 12, fontWeight: 700, color: C.white, marginBottom: 2 }}>
+                            {u.name || "Sem nome"}
+                          </div>
+                          <div style={{ fontSize: 10, color: C.muted }}>{u.email}</div>
+                        </div>
+                      ))}
                     </div>
                   )}
 
-                  <div style={{ display: "grid", gap: 7 }}>
-                    {[
-                      { label: "Marcar em análise", decision: "under_review", icon: <Eye size={13} />,         color: "#D4AF37", bg: "rgba(212,175,55,0.12)", border: "rgba(212,175,55,0.28)" },
-                      { label: "Aprovar KYC",        decision: "approved",     icon: <CheckCircle2 size={13} />, color: "#2D8659", bg: "rgba(45,134,89,0.13)",  border: "rgba(45,134,89,0.30)"  },
-                      { label: "Rejeitar KYC",       decision: "rejected",     icon: <XCircle size={13} />,     color: "#E5484D", bg: "rgba(229,72,77,0.10)",  border: "rgba(229,72,77,0.25)"  },
-                    ].map(({ label, decision, icon, color, bg, border }) => (
-                      <button
-                        key={decision}
-                        className="adm-action-btn"
-                        onClick={() => handleReview(decision)}
-                        disabled={submitting}
-                        style={{ background: bg, color, border: `1px solid ${border}` }}
-                      >
-                        {icon}
-                        {label}
-                      </button>
-                    ))}
-                  </div>
+                  {/* KYC Pending */}
+                  {attention.kycPending.length > 0 && (
+                    <div>
+                      <div style={{
+                        display: "flex", alignItems: "center", gap: 7, marginBottom: 9,
+                      }}>
+                        <Clock size={12} color={P.gold} />
+                        <span style={{ fontSize: 10, fontWeight: 800, color: P.gold, textTransform: "uppercase", letterSpacing: "0.10em" }}>
+                          KYC Pendente ({attention.kycPending.length})
+                        </span>
+                      </div>
+                      {attention.kycPending.map((u) => (
+                        <div key={u.id} className="dash-attn-row">
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                            <div>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: C.white, marginBottom: 2 }}>
+                                {u.name || "Sem nome"}
+                              </div>
+                              <div style={{ fontSize: 10, color: C.muted }}>{u.email}</div>
+                            </div>
+                            <span style={{
+                              padding: "3px 8px", borderRadius: 999,
+                              background: "rgba(129,182,28,0.10)", color: P.gold,
+                              fontSize: 9, fontWeight: 800, whiteSpace: "nowrap",
+                            }}>
+                              {getAccountStatusLabel(u.accountStatus)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-                  <div style={{
-                    background: C.cardSoft, border: `1px solid ${C.border}`,
-                    borderRadius: 10, padding: "10px 13px",
-                    fontSize: 11, color: C.muted, lineHeight: 1.7,
-                  }}>
-                    Ao aprovar, o usuário é promovido para{" "}
-                    <strong style={{ color: C.white }}>seller</strong> e recebe{" "}
-                    <strong style={{ color: C.white }}>seller_active</strong> quando o 2FA estiver ativo.
-                  </div>
+                  {/* No 2FA */}
+                  {attention.noTwoFA.length > 0 && (
+                    <div>
+                      <div style={{
+                        display: "flex", alignItems: "center", gap: 7, marginBottom: 9,
+                      }}>
+                        <ShieldOff size={12} color={C.muted} />
+                        <span style={{ fontSize: 10, fontWeight: 800, color: C.muted, textTransform: "uppercase", letterSpacing: "0.10em" }}>
+                          Sem 2FA ({attention.noTwoFA.length})
+                        </span>
+                      </div>
+                      {attention.noTwoFA.map((u) => (
+                        <div key={u.id} className="dash-attn-row">
+                          <div style={{ fontSize: 12, fontWeight: 700, color: C.white, marginBottom: 2 }}>
+                            {u.name || "Sem nome"}
+                          </div>
+                          <div style={{ fontSize: 10, color: C.muted }}>{u.email}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
         </>
-      ) : (
-        /* ── AUDIT TAB ────────────────────────────────────────────*/
-        <div style={panelStyle}>
-          <div style={{
-            display: "flex", justifyContent: "space-between",
-            alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12,
-          }}>
-            <div>
-              <SectionLabel>Log de Auditoria</SectionLabel>
-              <p style={{ fontSize: 12, color: C.dim }}>
-                Rastreabilidade completa das ações administrativas de KYC
-              </p>
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <div style={{
-                display: "flex", alignItems: "center", gap: 8,
-                background: C.inputDeep, border: `1px solid ${C.border}`,
-                borderRadius: 10, padding: "9px 12px",
-              }}>
-                <Search size={12} color={C.dim} />
-                <input
-                  value={auditSearch}
-                  onChange={e => setAuditSearch(e.target.value)}
-                  placeholder="Email, IP, motivo..."
-                  style={{
-                    background: "none", border: "none", outline: "none",
-                    color: C.white, fontFamily: "'DM Sans', system-ui, sans-serif",
-                    fontSize: 12, minWidth: 150,
-                  }}
-                />
-              </div>
-              <select value={auditAction} onChange={e => setAuditAction(e.target.value)} style={inputStyle}>
-                <option value="all">Todas ações</option>
-                <option value="kyc_submitted">KYC enviado</option>
-                <option value="kyc_under_review">KYC em análise</option>
-                <option value="kyc_approved">KYC aprovado</option>
-                <option value="kyc_rejected">KYC rejeitado</option>
-              </select>
-            </div>
-          </div>
-
-          {loadingLogs ? (
-            <EmptyState text="Carregando logs..." loading />
-          ) : auditRows.length === 0 ? (
-            <EmptyState text="Nenhum log encontrado." />
-          ) : (
-            <div style={{ display: "grid", gap: 8 }}>
-              {auditRows.map((item, idx) => (
-                <div key={item._id} className="adm-audit-row adm-up" style={{ animationDelay: `${idx * 30}ms` }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: C.white, marginBottom: 3 }}>
-                        {getAuditLabel(item.action)}
-                      </div>
-                      <div className="mono" style={{ fontSize: 10, color: C.dim }}>
-                        {fmtDate(item.createdAt)} · {item.actorUserId?.name || "Sistema"} · {item.actorRole || "system"}
-                      </div>
-                    </div>
-                    <span style={{
-                      padding: "4px 10px", borderRadius: 999,
-                      background: "rgba(45,134,89,0.10)", color: "#2D8659",
-                      fontSize: 10, fontWeight: 700,
-                      border: "1px solid rgba(45,134,89,0.20)", whiteSpace: "nowrap",
-                    }}>
-                      {item.metadata?.userEmail || "Sem email"}
-                    </span>
-                  </div>
-                  <div style={{
-                    display: "grid",
-                    gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
-                    gap: 6,
-                  }}>
-                    <MiniInfo label="IP"          value={item.ipAddress} />
-                    <MiniInfo label="Novo status" value={item.metadata?.newAccountStatus || item.metadata?.accountStatus} />
-                    <MiniInfo label="Role"        value={item.metadata?.newRole} />
-                  </div>
-                  {item.metadata?.reason && (
-                    <div style={{
-                      marginTop: 10,
-                      background: "rgba(229,72,77,0.05)",
-                      border: "1px solid rgba(229,72,77,0.14)",
-                      borderRadius: 9, padding: "8px 12px",
-                      fontSize: 11, color: C.light, lineHeight: 1.6,
-                    }}>
-                      <strong style={{ color: "#E5484D" }}>Motivo:</strong>{" "}
-                      {item.metadata.reason}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Pagination */}
-          <div style={{
-            marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.border}`,
-            display: "flex", justifyContent: "space-between",
-            alignItems: "center", gap: 12, flexWrap: "wrap",
-          }}>
-            <div style={{ fontSize: 11, color: C.dim }}>
-              Página <strong style={{ color: C.muted }}>{auditPagination.page || 1}</strong>{" "}
-              de <strong style={{ color: C.muted }}>{auditPagination.totalPages || 1}</strong>
-              {" · "}
-              <strong style={{ color: C.muted }}>{auditPagination.total || 0}</strong> total
-            </div>
-            <div style={{ display: "flex", gap: 6 }}>
-              {["Anterior", "Próxima"].map((label, i) => {
-                const page  = auditPagination.page || 1;
-                const total = auditPagination.totalPages || 1;
-                const off   = i === 0 ? page <= 1 : page >= total;
-                const next  = i === 0 ? Math.max(page - 1, 1) : Math.min(page + 1, total);
-                return (
-                  <button
-                    key={label}
-                    onClick={() => loadAuditLogs(next, true)}
-                    disabled={off}
-                    style={{ ...refreshBtnStyle, opacity: off ? 0.35 : 1, cursor: off ? "not-allowed" : "pointer" }}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
       )}
-
-      {/* ── Warning note ──────────────────────────────────────────── */}
-      <div style={{
-        marginTop: 16, borderRadius: 13, padding: "12px 16px",
-        background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.16)",
-        display: "flex", gap: 10, alignItems: "flex-start",
-      }}>
-        <AlertTriangle size={13} color="#D4AF37" style={{ flexShrink: 0, marginTop: 2 }} />
-        <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.7 }}>
-          Se os logs retornarem 400, verifique a ordem das rotas:{" "}
-          <strong style={{ color: C.white }}>/admin/audit-logs</strong>{" "}
-          deve vir antes de{" "}
-          <strong style={{ color: C.white }}>/admin/:id</strong>.
-        </div>
-      </div>
     </div>
   );
 }

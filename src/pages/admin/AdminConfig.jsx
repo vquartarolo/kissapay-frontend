@@ -151,7 +151,30 @@ export default function AdminConfig({ isMobile }) {
     }
   }
 
+  function validateForm() {
+    const pctKeys = ["pixInPct", "pixOutPct", "cryptoInPct", "cryptoOutPct", "retentionPct"];
+    for (const key of pctKeys) {
+      const v = Number(form[key]);
+      if (isNaN(v) || v < 0 || v > 100) return "Percentuais devem ser entre 0 e 100.";
+    }
+    const fixedKeys = ["pixInFixed", "pixOutFixed", "cryptoInFixed", "cryptoOutFixed"];
+    for (const key of fixedKeys) {
+      const v = Number(form[key]);
+      if (isNaN(v) || v < 0) return "Taxas fixas não podem ser negativas.";
+    }
+    if (Number(form.retentionDays) < 0 || isNaN(Number(form.retentionDays))) {
+      return "Dias de retenção não podem ser negativos.";
+    }
+    return null;
+  }
+
   async function handleSave() {
+    const validationError = validateForm();
+    if (validationError) {
+      setFeedback(validationError);
+      return;
+    }
+
     try {
       setSaving(true);
       setFeedback("");

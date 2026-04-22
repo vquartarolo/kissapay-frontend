@@ -8,6 +8,7 @@ import {
   Users,
   ScrollText,
   Settings,
+  LayoutDashboard,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -32,6 +33,7 @@ function getPath(id) {
     integracoes: "/integracoes",
     dominios: "/dominios",
     configuracoes: "/configuracoes",
+    adminDashboard: "/admin/dashboard",
     adminKyc: "/admin/kyc",
     adminWithdrawals: "/admin/withdrawals",
     adminManage: "/admin/manage",
@@ -44,6 +46,7 @@ function getPath(id) {
 const ICON_COL = 18;
 
 const ADMIN_ITEMS = [
+  { id: "adminDashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "adminKyc", label: "KYC", icon: ShieldCheck },
   { id: "adminWithdrawals", label: "Saques / Aprovações", icon: Wallet },
   { id: "adminManage", label: "Gerenciar", icon: Users },
@@ -204,6 +207,7 @@ export default function Sidebar() {
     if (p.startsWith("/integracoes")) return "integracoes";
     if (p.startsWith("/dominios")) return "dominios";
     if (p.includes("configuracoes")) return "configuracoes";
+    if (p.includes("/admin/dashboard")) return "adminDashboard";
     if (p.includes("/admin/kyc")) return "adminKyc";
     if (p.includes("/admin/withdrawals")) return "adminWithdrawals";
     if (p.includes("/admin/manage")) return "adminManage";

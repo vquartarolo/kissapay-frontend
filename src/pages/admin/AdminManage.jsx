@@ -704,8 +704,31 @@ export default function AdminManagePage({ isMobile }) {
     }
   }
 
+  function validateSplitForm() {
+    const pctKeys = ["pixInPercentage", "pixOutPercentage", "cryptoInPercentage", "cryptoOutPercentage", "retentionPercentage"];
+    for (const key of pctKeys) {
+      const v = Number(splitForm[key]);
+      if (isNaN(v) || v < 0 || v > 100) return "Percentuais devem ser entre 0 e 100.";
+    }
+    const fixedKeys = ["pixInFixed", "pixOutFixed", "cryptoInFixed", "cryptoOutFixed"];
+    for (const key of fixedKeys) {
+      const v = Number(splitForm[key]);
+      if (isNaN(v) || v < 0) return "Taxas fixas não podem ser negativas.";
+    }
+    if (Number(splitForm.retentionDays) < 0 || isNaN(Number(splitForm.retentionDays))) {
+      return "Dias de retenção não podem ser negativos.";
+    }
+    return null;
+  }
+
   async function handleSaveSplit() {
     if (!selectedId) return;
+
+    const validationError = validateSplitForm();
+    if (validationError) {
+      setFeedback(validationError);
+      return;
+    }
 
     try {
       setSavingSplit(true);

@@ -105,3 +105,31 @@ export async function updateAdminConfig(payload) {
   const { data } = await api.patch(`/admin/config`, payload);
   return data;
 }
+
+/* =========================
+   DASHBOARD FINANCEIRO
+========================= */
+export async function getDashboardOverview(days = 30) {
+  const { data } = await api.get(`/admin/dashboard/overview?days=${days}`);
+  return data;
+}
+
+export async function getDashboardVolumeSeries(days = 30) {
+  const { data } = await api.get(`/admin/dashboard/volume?days=${days}`);
+  return data;
+}
+
+export async function getDashboardRevenueSeries(days = 30) {
+  const { data } = await api.get(`/admin/dashboard/revenue?days=${days}`);
+  return data;
+}
+
+export async function getDashboardTopSellers(days = 30, limit = 8) {
+  const { data } = await api.get(`/admin/dashboard/top-sellers?days=${days}&limit=${limit}`);
+  return data;
+}
+
+export async function getDashboardAttention() {
+  const { data } = await api.get(`/admin/dashboard/attention`);
+  return data;
+}

@@ -13,6 +13,10 @@ import {
   LayoutTemplate,
   Plug2,
   Globe,
+  ShieldCheck,
+  Users,
+  ScrollText,
+  Menu,
 } from "lucide-react";
 
 export const NAV = [
@@ -49,7 +53,6 @@ export const NAV = [
     ],
   },
 
-  // 🔥 GRUPO: CRIAR COBRANÇA
   {
     id: "criarCobranca",
     label: "Criar Cobranca",
@@ -68,14 +71,13 @@ export const NAV = [
     ],
   },
 
-  // 🔥 GRUPO: SAQUE
   {
     id: "saque",
     label: "Saque",
     icon: ArrowUpRight,
     children: [
       {
-        id: "sacar", // mantém compatível
+        id: "sacar",
         label: "Cripto",
         icon: Coins,
       },
@@ -115,9 +117,48 @@ export const NAV = [
 ];
 
 export const BOTTOM = [
-  { id: "dashboard", label: "Inicio", icon: Home },
+  { id: "dashboard",    label: "Início",  icon: Home },
   { id: "recebimentos", label: "Receber", icon: ArrowDownLeft },
-  { id: "criarCripto", label: "Cripto", icon: Coins },
-  { id: "sacar", label: "Sacar", icon: ArrowUpRight },
-  { id: "configuracoes", label: "Config", icon: Settings },
+  { id: "sacar",        label: "Sacar",   icon: ArrowUpRight },
+  { id: "menu",         label: "Menu",    icon: Menu },
+];
+
+export const DRAWER_SECTIONS = [
+  {
+    title: "Negócio",
+    items: [
+      { id: "recebimentos", label: "Recebimentos",           icon: ArrowDownLeft },
+      { id: "produtos",     label: "Loja",                   icon: ShoppingBag },
+      { id: "criarPix",     label: "Criar Cobrança",         icon: QrCode },
+      { id: "historico",    label: "Histórico de Cobranças", icon: History },
+      { id: "wallet",       label: "Carteira",               icon: Wallet },
+    ],
+  },
+  {
+    title: "Saques",
+    items: [
+      { id: "sacar",    label: "Solicitar Saque",     icon: ArrowUpRight },
+      { id: "historico", label: "Histórico de Saques", icon: History },
+    ],
+  },
+  {
+    title: "Conta",
+    items: [
+      { id: "apikeys",       label: "API Keys",      icon: Key },
+      { id: "integracoes",   label: "Integrações",   icon: Plug2 },
+      { id: "dominios",      label: "Domínios",      icon: Globe },
+      { id: "configuracoes", label: "Configurações", icon: Settings },
+    ],
+  },
+  {
+    title: "Área Administrativa",
+    adminOnly: true,
+    items: [
+      { id: "adminKyc",         label: "KYC",                 icon: ShieldCheck },
+      { id: "adminWithdrawals", label: "Saques / Aprovações", icon: Wallet },
+      { id: "adminManage",      label: "Gerenciar",           icon: Users },
+      { id: "adminAudit",       label: "Auditoria",           icon: ScrollText },
+      { id: "adminConfig",      label: "Config. padrão",      icon: Settings },
+    ],
+  },
 ];

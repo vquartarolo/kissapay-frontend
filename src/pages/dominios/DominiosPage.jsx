@@ -710,7 +710,7 @@ export default function DominiosPage({ isMobile }) {
       <PageHeader
         title="Domínios"
         subtitle="Conecte domínios personalizados aos seus checkouts"
-        action={
+        right={
           <button
             type="button"
             onClick={() => setShowModal(true)}
@@ -730,7 +730,7 @@ export default function DominiosPage({ isMobile }) {
             }}
           >
             <Plus size={15} />
-            Adicionar domínio
+            {isMobile ? "Adicionar" : "Adicionar domínio"}
           </button>
         }
       />

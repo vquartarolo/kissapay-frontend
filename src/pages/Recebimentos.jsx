@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, QrCode, TrendingUp, Copy, Check, ExternalLink } from "lucide-react";
+import { Search, QrCode, TrendingUp, Copy, Check, ExternalLink, Coins } from "lucide-react";
 import {
   AreaChart,
   Area,
@@ -303,17 +303,126 @@ export default function RecebimentosPage({ isMobile }) {
     cursor: "pointer",
   };
 
+  const HUB_METHODS = [
+    {
+      key: "pix",
+      label: "PIX",
+      desc: "Nova cobrança",
+      icon: QrCode,
+      path: "/cobrancas/pix",
+      color: "#3B82F6",
+    },
+    {
+      key: "crypto",
+      label: "Cripto",
+      desc: "Nova cobrança",
+      icon: Coins,
+      path: "/cobrancas/cripto",
+      color: C.green,
+    },
+  ];
+
   return (
     <div>
       <PageHeader
         title="Recebimentos"
         subtitle="Histórico de pagamentos recebidos"
         right={
-          <Btn size="sm" icon={<QrCode size={14} />} onClick={() => navigate("/cobrancas/pix")}>
-            Nova cobrança
-          </Btn>
+          !isMobile && (
+            <Btn size="sm" icon={<QrCode size={14} />} onClick={() => navigate("/cobrancas/pix")}>
+              Nova cobrança
+            </Btn>
+          )
         }
       />
+
+      {/* Mobile: hub de métodos */}
+      {isMobile && (
+        <div style={{ marginBottom: 20 }}>
+          {/* Tab selector */}
+          <div style={{
+            display: "flex",
+            background: "var(--c-card)",
+            border: `1px solid ${C.border}`,
+            borderRadius: 12,
+            padding: 3,
+            marginBottom: 10,
+          }}>
+            {[{ key: "all", label: "Todos" }, ...HUB_METHODS.map((m) => ({ key: m.key, label: m.label }))].map((tab) => {
+              const sel = method === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => {
+                    setMethod(tab.key);
+                    applyFilters(tab.key, status, dateFrom, dateTo);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "9px 0",
+                    borderRadius: 9,
+                    border: "none",
+                    background: sel ? C.green : "transparent",
+                    color: sel ? "#fff" : C.muted,
+                    fontSize: 13,
+                    fontWeight: sel ? 700 : 500,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Quick action cards */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {HUB_METHODS.map(({ key, label, desc, icon: Icon, path, color }) => (
+              <button
+                key={key}
+                onClick={() => navigate(path)}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: 10,
+                  padding: "14px",
+                  background: "var(--c-card)",
+                  border: `1px solid ${method === key ? `${color}44` : C.border}`,
+                  borderRadius: 12,
+                  cursor: "pointer",
+                  textAlign: "left",
+                  fontFamily: "inherit",
+                  transition: "border-color 0.15s",
+                }}
+              >
+                <div style={{
+                  width: 36, height: 36,
+                  borderRadius: 9,
+                  background: `${color}14`,
+                  border: `1px solid ${color}28`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color,
+                }}>
+                  <Icon size={16} strokeWidth={1.8} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.white, marginBottom: 1, lineHeight: 1.2 }}>
+                    {label}
+                  </div>
+                  <div style={{ fontSize: 11, color: C.muted }}>
+                    {desc}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div
         style={{

@@ -128,16 +128,40 @@ export const DRAWER_SECTIONS = [
     title: "Negócio",
     items: [
       { id: "recebimentos", label: "Recebimentos",           icon: ArrowDownLeft },
-      { id: "produtos",     label: "Loja",                   icon: ShoppingBag },
-      { id: "criarPix",     label: "Criar Cobrança",         icon: QrCode },
-      { id: "historico",    label: "Histórico de Cobranças", icon: History },
-      { id: "wallet",       label: "Carteira",               icon: Wallet },
+      {
+        id: "loja",
+        label: "Loja",
+        icon: ShoppingBag,
+        children: [
+          { id: "produtos",  label: "Produtos",  icon: Package },
+          { id: "checkouts", label: "Checkouts", icon: LayoutTemplate },
+        ],
+      },
+      {
+        id: "criarCobranca",
+        label: "Criar Cobrança",
+        icon: QrCode,
+        children: [
+          { id: "criarPix",    label: "Via PIX",    icon: QrCode },
+          { id: "criarCripto", label: "Via Cripto",  icon: Coins },
+        ],
+      },
+      { id: "historico", label: "Histórico de Cobranças", icon: History },
+      { id: "wallet",    label: "Carteira",               icon: Wallet },
     ],
   },
   {
     title: "Saques",
     items: [
-      { id: "sacar",    label: "Solicitar Saque",     icon: ArrowUpRight },
+      {
+        id: "saqueHub",
+        label: "Solicitar Saque",
+        icon: ArrowUpRight,
+        children: [
+          { id: "sacar",    label: "Via Cripto", icon: Coins },
+          { id: "sacarPix", label: "Via PIX",    icon: QrCode },
+        ],
+      },
       { id: "historico", label: "Histórico de Saques", icon: History },
     ],
   },

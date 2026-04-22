@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { LogOut, X, ChevronRight, ArrowLeft } from "lucide-react";
 import C from "../../constants/colors";
 import { DRAWER_SECTIONS } from "../../constants/navigation";
 import { useAuth } from "../../context/AuthContext";
@@ -55,16 +55,94 @@ const ANIM = `
     from { transform: translateY(100%); }
     to   { transform: translateY(0); }
   }
-  @keyframes _drawerOverlay {
+  @keyframes _drawerFade {
     from { opacity: 0; }
     to   { opacity: 1; }
   }
+  @keyframes _slideRight {
+    from { transform: translateX(28px); opacity: 0; }
+    to   { transform: translateX(0);   opacity: 1; }
+  }
+  @keyframes _slideLeft {
+    from { transform: translateX(-28px); opacity: 0; }
+    to   { transform: translateX(0);     opacity: 1; }
+  }
 `;
+
+function DrawerItem({ item, isActive, hasChildren, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        position: "relative",
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "10px 16px",
+        border: "none",
+        background: isActive ? "rgba(45,134,89,0.07)" : "transparent",
+        color: isActive ? C.white : C.muted,
+        fontSize: 14,
+        fontWeight: isActive ? 600 : 400,
+        cursor: "pointer",
+        textAlign: "left",
+        fontFamily: "inherit",
+        letterSpacing: "0.01em",
+        minHeight: 50,
+        transition: "background 0.12s",
+      }}
+    >
+      {isActive && (
+        <span style={{
+          position: "absolute",
+          left: 0,
+          top: "50%",
+          transform: "translateY(-50%)",
+          width: 3,
+          height: "52%",
+          borderRadius: 2,
+          background: C.green,
+        }} />
+      )}
+
+      {/* Icon container */}
+      <div style={{
+        width: 34,
+        height: 34,
+        borderRadius: 9,
+        flexShrink: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: isActive
+          ? "rgba(45,134,89,0.12)"
+          : "rgba(255,255,255,0.04)",
+        border: `1px solid ${isActive ? "rgba(45,134,89,0.22)" : "var(--c-border)"}`,
+      }}>
+        <item.icon
+          size={15}
+          strokeWidth={isActive ? 2.2 : 1.7}
+          style={{ color: isActive ? C.green : "inherit" }}
+        />
+      </div>
+
+      <span style={{ flex: 1, lineHeight: 1.3 }}>{item.label}</span>
+
+      {hasChildren && (
+        <ChevronRight size={14} strokeWidth={1.8} style={{ color: C.dim, flexShrink: 0 }} />
+      )}
+    </button>
+  );
+}
 
 export default function MobileDrawer({ isOpen, onClose }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [subview, setSubview] = useState(null);   // null | { title, items }
+  const [slideDir, setSlideDir] = useState(null); // "right" | "left" | null
 
   const isAdmin = ["moderator", "super_moderator", "admin", "master"].includes(
     String(user?.role || "").toLowerCase()
@@ -72,20 +150,40 @@ export default function MobileDrawer({ isOpen, onClose }) {
 
   const activeId = useMemo(() => resolveActive(location.pathname), [location.pathname]);
 
+  // Reset subview when drawer closes
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
+    if (!isOpen) {
+      setSubview(null);
+      setSlideDir(null);
     }
+  }, [isOpen]);
+
+  // Lock body scroll
+  useEffect(() => {
+    document.body.style.overflow = isOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  function handleNav(id) {
+  function handleItemClick(item) {
+    if (item.children) {
+      setSlideDir("right");
+      setSubview({ title: item.label, items: item.children });
+      return;
+    }
+    navigate(PATH_MAP[item.id] || "/dashboard");
+    onClose();
+  }
+
+  function handleSubItemClick(id) {
     navigate(PATH_MAP[id] || "/dashboard");
     onClose();
+  }
+
+  function handleBack() {
+    setSlideDir("left");
+    setSubview(null);
   }
 
   function handleLogout() {
@@ -95,10 +193,17 @@ export default function MobileDrawer({ isOpen, onClose }) {
   }
 
   const visibleSections = DRAWER_SECTIONS.filter((s) => !s.adminOnly || isAdmin);
+
   const initials = String(user?.name || user?.email || "U").trim().charAt(0).toUpperCase();
   const roleName = user?.role
     ? String(user.role).charAt(0).toUpperCase() + String(user.role).slice(1).toLowerCase()
     : "Conta";
+
+  const contentAnim = slideDir === "right"
+    ? "_slideRight 0.22s ease forwards"
+    : slideDir === "left"
+      ? "_slideLeft 0.22s ease forwards"
+      : "none";
 
   return (
     <>
@@ -112,7 +217,7 @@ export default function MobileDrawer({ isOpen, onClose }) {
           inset: 0,
           background: "rgba(0,0,0,0.65)",
           zIndex: 400,
-          animation: "_drawerOverlay 0.22s ease forwards",
+          animation: "_drawerFade 0.22s ease forwards",
         }}
       />
 
@@ -133,166 +238,90 @@ export default function MobileDrawer({ isOpen, onClose }) {
           animation: "_drawerUp 0.3s cubic-bezier(0.32,0.72,0,1) forwards",
         }}
       >
-        {/* Handle bar */}
-        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 4px" }}>
-          <div
-            style={{
-              width: 36,
-              height: 4,
-              borderRadius: 2,
-              background: C.borderStrong,
-            }}
-          />
+        {/* Handle */}
+        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 0" }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: C.borderStrong }} />
         </div>
 
-        {/* Scrollable sections */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "4px 0 4px" }}>
-          {visibleSections.map((section, si) => (
-            <div key={section.title}>
-              <div
+        {/* Header */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "10px 16px 10px",
+          borderBottom: `1px solid ${C.border}`,
+        }}>
+          {subview ? (
+            <>
+              <button
+                onClick={handleBack}
                 style={{
-                  fontSize: 9,
-                  fontWeight: 700,
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  color: C.dim,
-                  padding: "10px 20px 4px",
+                  width: 32, height: 32,
+                  borderRadius: 8,
+                  border: `1px solid ${C.border}`,
+                  background: "transparent",
+                  color: C.muted,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  flexShrink: 0,
                 }}
               >
-                {section.title}
-              </div>
-
-              {section.items.map((item) => {
-                const isActive = activeId === item.id;
-                return (
-                  <button
-                    key={`${si}-${item.id}`}
-                    onClick={() => handleNav(item.id)}
-                    style={{
-                      position: "relative",
-                      width: "100%",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      padding: "11px 20px",
-                      border: "none",
-                      background: isActive ? "var(--c-card-soft)" : "transparent",
-                      color: isActive ? C.white : C.muted,
-                      fontSize: 14,
-                      fontWeight: isActive ? 600 : 400,
-                      cursor: "pointer",
-                      textAlign: "left",
-                      fontFamily: "inherit",
-                      letterSpacing: "0.01em",
-                    }}
-                  >
-                    {isActive && (
-                      <span
-                        style={{
-                          position: "absolute",
-                          left: 0,
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          width: 3,
-                          height: "60%",
-                          borderRadius: 2,
-                          background: C.green,
-                        }}
-                      />
-                    )}
-                    <item.icon
-                      size={16}
-                      strokeWidth={isActive ? 2.2 : 1.7}
-                      style={{ color: isActive ? C.green : "inherit", flexShrink: 0 }}
-                    />
-                    <span style={{ lineHeight: 1 }}>{item.label}</span>
-                  </button>
-                );
-              })}
-
-              {si < visibleSections.length - 1 && (
-                <div style={{ height: 1, background: C.border, margin: "6px 16px" }} />
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Footer: user + logout */}
-        <div
-          style={{
-            borderTop: `1px solid ${C.border}`,
-            padding: "12px 20px",
-            paddingBottom: "calc(12px + env(safe-area-inset-bottom, 8px))",
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-          }}
-        >
-          {/* Avatar */}
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              overflow: "hidden",
-              background: "rgba(45,134,89,0.12)",
-              border: "1px solid rgba(45,134,89,0.22)",
-              color: C.green,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: 800,
-              fontSize: 14,
-              flexShrink: 0,
-            }}
-          >
-            {user?.avatar ? (
-              <img
-                src={user.avatar}
-                alt="Avatar"
-                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                onError={(e) => { e.currentTarget.style.display = "none"; }}
-              />
-            ) : (
-              initials
-            )}
-          </div>
-
-          {/* Name + role */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                fontSize: 13,
+                <ArrowLeft size={15} strokeWidth={2} />
+              </button>
+              <span style={{
+                flex: 1,
+                fontSize: 15,
                 fontWeight: 700,
                 color: C.white,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                lineHeight: 1.2,
-              }}
-            >
-              {user?.name || "Usuário"}
-            </div>
-            <div
-              style={{
-                fontSize: 11,
-                color: C.dim,
-                marginTop: 2,
-                textTransform: "capitalize",
-              }}
-            >
-              {roleName}
-            </div>
-          </div>
+                letterSpacing: "-0.01em",
+              }}>
+                {subview.title}
+              </span>
+            </>
+          ) : (
+            <>
+              {/* OrionPay logo mark */}
+              <div style={{
+                width: 26, height: 26,
+                borderRadius: 7,
+                background: "linear-gradient(145deg, #1A3828, #0F2118)",
+                border: "1px solid rgba(45,134,89,0.25)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}>
+                <span style={{
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  fontSize: 12,
+                  fontWeight: 800,
+                  background: `linear-gradient(135deg, ${C.gold}, #F0D060)`,
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}>
+                  O
+                </span>
+              </div>
+              <span style={{
+                flex: 1,
+                fontFamily: "'Playfair Display', Georgia, serif",
+                fontSize: 13,
+                fontWeight: 800,
+                letterSpacing: "0.08em",
+                color: C.white,
+              }}>
+                ORION<span style={{ color: C.gold }}>PAY</span>
+              </span>
+            </>
+          )}
 
-          {/* Logout */}
           <button
-            onClick={handleLogout}
-            title="Sair"
+            onClick={onClose}
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 9,
+              width: 32, height: 32,
+              borderRadius: 8,
               border: `1px solid ${C.border}`,
               background: "transparent",
               color: C.muted,
@@ -303,7 +332,164 @@ export default function MobileDrawer({ isOpen, onClose }) {
               flexShrink: 0,
             }}
           >
-            <LogOut size={16} />
+            <X size={15} strokeWidth={2} />
+          </button>
+        </div>
+
+        {/* Animated content */}
+        <div
+          key={subview ? `sub-${subview.title}` : "main"}
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            animation: contentAnim,
+          }}
+        >
+          {subview ? (
+            /* Sub-panel */
+            <div style={{ padding: "6px 0 12px" }}>
+              {subview.items.map((item) => {
+                const isActive = activeId === item.id;
+                return (
+                  <DrawerItem
+                    key={item.id}
+                    item={item}
+                    isActive={isActive}
+                    hasChildren={false}
+                    onClick={() => handleSubItemClick(item.id)}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            /* Main menu */
+            <div style={{ padding: "4px 0 12px" }}>
+              {visibleSections.map((section, si) => (
+                <div key={section.title}>
+                  {/* Section label + divider */}
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "14px 16px 6px",
+                  }}>
+                    <span style={{
+                      fontSize: 9,
+                      fontWeight: 700,
+                      letterSpacing: "0.14em",
+                      textTransform: "uppercase",
+                      color: C.dim,
+                      flexShrink: 0,
+                    }}>
+                      {section.title}
+                    </span>
+                    <div style={{ flex: 1, height: 1, background: C.border }} />
+                  </div>
+
+                  {section.items.map((item) => {
+                    const childIds = item.children?.map((c) => c.id) ?? [];
+                    const isActive =
+                      activeId === item.id || childIds.includes(activeId);
+                    return (
+                      <DrawerItem
+                        key={item.id}
+                        item={item}
+                        isActive={isActive}
+                        hasChildren={!!item.children}
+                        onClick={() => handleItemClick(item)}
+                      />
+                    );
+                  })}
+
+                  {si < visibleSections.length - 1 && (
+                    <div style={{ height: 6 }} />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer: user + logout */}
+        <div style={{
+          borderTop: `1px solid ${C.border}`,
+          padding: "12px 16px",
+          paddingBottom: "calc(12px + env(safe-area-inset-bottom, 8px))",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          background: "rgba(255,255,255,0.015)",
+        }}>
+          {/* Avatar */}
+          <div style={{
+            width: 38, height: 38,
+            borderRadius: 10,
+            overflow: "hidden",
+            background: "rgba(45,134,89,0.12)",
+            border: "1px solid rgba(45,134,89,0.22)",
+            color: C.green,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: 800,
+            fontSize: 14,
+            flexShrink: 0,
+          }}>
+            {user?.avatar ? (
+              <img
+                src={user.avatar}
+                alt="Avatar"
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                onError={(e) => { e.currentTarget.style.display = "none"; }}
+              />
+            ) : initials}
+          </div>
+
+          {/* Name + role */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: C.white,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              lineHeight: 1.3,
+            }}>
+              {user?.name || "Usuário"}
+            </div>
+            <div style={{
+              fontSize: 11,
+              color: C.dim,
+              marginTop: 2,
+              textTransform: "capitalize",
+            }}>
+              {roleName}
+            </div>
+          </div>
+
+          {/* Logout */}
+          <button
+            onClick={handleLogout}
+            title="Sair da conta"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 13px",
+              borderRadius: 8,
+              border: `1px solid ${C.border}`,
+              background: "transparent",
+              color: C.muted,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              flexShrink: 0,
+            }}
+          >
+            <LogOut size={13} />
+            Sair
           </button>
         </div>
       </div>

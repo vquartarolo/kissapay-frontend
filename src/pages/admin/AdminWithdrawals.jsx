@@ -681,6 +681,10 @@ export default function AdminWithdrawalsPage({ isMobile }) {
                 riskScore={selected?.riskScore}
                 riskDecision={selected?.riskDecision}
                 riskReasons={selected?.riskReasons}
+                kycRiskLevel={selected?.kycRiskLevel}
+                kycPepStatus={selected?.kycPepStatus}
+                kycSanctionsStatus={selected?.kycSanctionsStatus}
+                kycType={selected?.user?.kycType}
               />
 
               {/* Motivo de rejeição */}

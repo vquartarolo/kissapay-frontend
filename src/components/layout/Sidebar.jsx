@@ -9,6 +9,7 @@ import {
   ScrollText,
   Settings,
   LayoutDashboard,
+  GitPullRequestArrow,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -39,6 +40,7 @@ function getPath(id) {
     adminManage: "/admin/manage",
     adminAudit: "/admin/audit",
     adminConfig: "/admin/config",
+    adminApprovals: "/admin/approvals",
   };
   return map[id] || "/dashboard";
 }
@@ -46,12 +48,13 @@ function getPath(id) {
 const ICON_COL = 18;
 
 const ADMIN_ITEMS = [
-  { id: "adminDashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "adminKyc", label: "KYC", icon: ShieldCheck },
-  { id: "adminWithdrawals", label: "Saques / Aprovações", icon: Wallet },
-  { id: "adminManage", label: "Gerenciar", icon: Users },
-  { id: "adminAudit", label: "Auditoria", icon: ScrollText },
-  { id: "adminConfig", label: "Config. padrão", icon: Settings },
+  { id: "adminDashboard",  label: "Dashboard",          icon: LayoutDashboard      },
+  { id: "adminKyc",        label: "KYC",                icon: ShieldCheck           },
+  { id: "adminWithdrawals",label: "Saques / Aprovações",icon: Wallet               },
+  { id: "adminApprovals",  label: "Aprovações",         icon: GitPullRequestArrow  },
+  { id: "adminManage",     label: "Gerenciar",          icon: Users                },
+  { id: "adminAudit",      label: "Auditoria",          icon: ScrollText           },
+  { id: "adminConfig",     label: "Config. padrão",     icon: Settings             },
 ];
 
 function SidebarBtn({
@@ -211,8 +214,9 @@ export default function Sidebar() {
     if (p.includes("/admin/kyc")) return "adminKyc";
     if (p.includes("/admin/withdrawals")) return "adminWithdrawals";
     if (p.includes("/admin/manage")) return "adminManage";
-    if (p.includes("/admin/audit")) return "adminAudit";
-    if (p.includes("/admin/config")) return "adminConfig";
+    if (p.includes("/admin/audit"))      return "adminAudit";
+    if (p.includes("/admin/config"))     return "adminConfig";
+    if (p.includes("/admin/approvals"))  return "adminApprovals";
     return "dashboard";
   }, [location.pathname]);
 

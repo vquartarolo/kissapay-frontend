@@ -107,6 +107,65 @@ export async function updateAdminConfig(payload) {
 }
 
 /* =========================
+   KYC ADMIN
+========================= */
+export async function getAdminKycList(status = "") {
+  const suffix = status && status !== "all" ? `?status=${status}` : "";
+  const { data } = await api.get(`/kyc/admin/list${suffix}`);
+  return data;
+}
+
+export async function getAdminKycDetail(id) {
+  const { data } = await api.get(`/kyc/admin/${id}`);
+  return data;
+}
+
+export async function reviewAdminKyc(id, payload) {
+  const { data } = await api.patch(`/kyc/admin/${id}/review`, payload);
+  return data;
+}
+
+export async function updateAdminKycCompliance(id, payload) {
+  const { data } = await api.patch(`/kyc/admin/${id}/compliance`, payload);
+  return data;
+}
+
+/* =========================
+   APROVAÇÕES (MAKER-CHECKER)
+========================= */
+export async function createApprovalRequest(payload) {
+  const { data } = await api.post("/admin/approvals", payload);
+  return data;
+}
+
+export async function listApprovals(params = {}) {
+  const query = new URLSearchParams();
+  if (params.status && params.status !== "all") query.set("status", params.status);
+  if (params.actionType) query.set("actionType", params.actionType);
+  if (params.page) query.set("page", String(params.page));
+  if (params.limit) query.set("limit", String(params.limit));
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  const { data } = await api.get(`/admin/approvals${suffix}`);
+  return data;
+}
+
+export async function getApprovalRequest(id) {
+  const { data } = await api.get(`/admin/approvals/${id}`);
+  return data;
+}
+
+export async function approveApprovalRequest(id) {
+  const { data } = await api.post(`/admin/approvals/${id}/approve`);
+  return data;
+}
+
+export async function rejectApprovalRequest(id, reason = "") {
+  const { data } = await api.post(`/admin/approvals/${id}/reject`, { reason });
+  return data;
+}
+
+/* =========================
    DASHBOARD FINANCEIRO
 ========================= */
 export async function getDashboardOverview(days = 30) {

@@ -1,4 +1,4 @@
-import { Shield, ShieldCheck, ShieldAlert, ShieldX } from "lucide-react";
+import { Shield, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle } from "lucide-react";
 import C from "../../constants/colors";
 import { getRiskLevel } from "./RiskBadge";
 
@@ -30,6 +30,7 @@ function humanizeReason(reason) {
   if (!reason) return null;
   const r = String(reason).toLowerCase();
 
+  // Comportamento transacional
   if (r.includes("excede o limite") || r.includes("high_single_amount"))
     return "Valor alto para saque único";
   if (r.includes("limite diário excedido") || r.includes("daily_limit_exceeded"))
@@ -38,8 +39,6 @@ function humanizeReason(reason) {
     return "Muitas tentativas de saque no dia";
   if (r.includes("conta criada há menos") || r.includes("new_account"))
     return "Conta criada recentemente";
-  if (r.includes("kyc não aprovado") || r.includes("kyc_not_approved"))
-    return "KYC ainda não aprovado";
   if ((r.includes("depósito") || r.includes("deposito")) && r.includes("pix"))
     return "Saque solicitado logo após depósito PIX";
   if (r.includes("média histórica") || r.includes("unusual_amount"))
@@ -49,20 +48,138 @@ function humanizeReason(reason) {
   if ((r.includes("chave pix") && r.includes("diferente")) || r.includes("new_pix_key"))
     return "Chave PIX nunca usada antes";
 
+  // Compliance KYC
+  if (r.includes("lista de sanções"))
+    return "Usuário em lista de sanções internacionais";
+  if (r.includes("nível de risco aml") || r.includes("aml classificado"))
+    return "Risco AML alto classificado pelo backoffice";
+  if (r.includes("pessoa politicamente exposta") && r.includes("confirmado"))
+    return "PEP confirmado — pessoa politicamente exposta";
+  if (r.includes("possível correspondência de pep") || r.includes("possible_match"))
+    return "Possível PEP — requer verificação";
+  if (r.includes("sem sócios") || r.includes("ubo"))
+    return "Empresa sem sócios/beneficiários (UBO) cadastrados";
+  if (r.includes("sócio") && r.includes("politicamente"))
+    return "Sócio da empresa identificado como PEP";
+  if (r.includes("kyc em situação irregular") || r.includes("kyc irregular"))
+    return "KYC em situação irregular";
+  if (r.includes("nenhum documento kyc"))
+    return "Sem documento KYC registrado";
+  if (r.includes("kyc não aprovado") || r.includes("kyc_not_approved"))
+    return "KYC ainda não aprovado";
+
   return reason;
 }
 
+// ── Banners de alerta de compliance ──────────────────────────────────────────
+
+function ComplianceAlert({ type }) {
+  const configs = {
+    sanctions: {
+      bg:    "rgba(229,72,77,0.10)",
+      border:"rgba(229,72,77,0.28)",
+      color: "#E5484D",
+      icon:  <ShieldX size={13} />,
+      text:  "Usuário em lista de sanções — operação bloqueada por compliance",
+    },
+    aml_high: {
+      bg:    "rgba(229,72,77,0.07)",
+      border:"rgba(229,72,77,0.20)",
+      color: "#E5484D",
+      icon:  <AlertTriangle size={13} />,
+      text:  "Risco AML alto — requer revisão detalhada do backoffice",
+    },
+    pep: {
+      bg:    "rgba(245,158,11,0.07)",
+      border:"rgba(245,158,11,0.22)",
+      color: "#F59E0B",
+      icon:  <AlertTriangle size={13} />,
+      text:  "Pessoa politicamente exposta (PEP) — aprovação requer análise manual",
+    },
+  };
+
+  const c = configs[type];
+  if (!c) return null;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 8,
+        padding: "9px 11px",
+        borderRadius: 9,
+        background: c.bg,
+        border: `1px solid ${c.border}`,
+        marginBottom: 8,
+      }}
+    >
+      <span style={{ color: c.color, flexShrink: 0, marginTop: 1 }}>{c.icon}</span>
+      <span style={{ fontSize: 12, color: c.color, lineHeight: 1.5, fontWeight: 700 }}>
+        {c.text}
+      </span>
+    </div>
+  );
+}
+
+function KycInfoRow({ label, value, color }) {
+  if (!value) return null;
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 8,
+        padding: "5px 0",
+        borderBottom: `1px solid rgba(255,255,255,0.05)`,
+      }}
+    >
+      <span style={{ fontSize: 11, color: C.muted }}>{label}</span>
+      <span
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          color: color || C.white,
+          textTransform: "capitalize",
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
+
 /**
- * Card de análise de risco para o painel de detalhe do saque.
  * Props:
- *   riskScore    – 0–100 (ou undefined/null)
- *   riskDecision – "allow" | "review" | "block" (ou undefined/null)
- *   riskReasons  – string[] (ou undefined/null)
+ *   riskScore        – 0–100
+ *   riskDecision     – "allow" | "review" | "block"
+ *   riskReasons      – string[]
+ *   kycRiskLevel     – "low" | "medium" | "high" | null
+ *   kycPepStatus     – "unknown" | "clear" | "possible_match" | "confirmed" | null
+ *   kycSanctionsStatus – "unknown" | "clear" | "possible_match" | "confirmed" | null
+ *   kycType          – "individual" | "business" | null
  */
-export default function RiskAnalysisCard({ riskScore, riskDecision, riskReasons }) {
+export default function RiskAnalysisCard({
+  riskScore,
+  riskDecision,
+  riskReasons,
+  kycRiskLevel,
+  kycPepStatus,
+  kycSanctionsStatus,
+  kycType,
+}) {
   const level = getRiskLevel(riskDecision, riskScore);
   const score = riskScore == null ? null : Math.min(100, Math.max(0, Number(riskScore)));
   const reasons = Array.isArray(riskReasons) ? riskReasons : [];
+
+  const hasSanctions = kycSanctionsStatus === "confirmed";
+  const hasAmlHigh   = kycRiskLevel === "high";
+  const hasPep       = kycPepStatus === "confirmed";
+
+  const hasKycInfo = kycRiskLevel || kycPepStatus || kycSanctionsStatus || kycType;
 
   // Saques sem análise (dados antigos)
   if (!level && score == null) {
@@ -129,9 +246,14 @@ export default function RiskAnalysisCard({ riskScore, riskDecision, riskReasons 
         </span>
       </div>
 
+      {/* ── Banners de alerta de compliance ── */}
+      {hasSanctions && <ComplianceAlert type="sanctions" />}
+      {!hasSanctions && hasAmlHigh && <ComplianceAlert type="aml_high" />}
+      {!hasSanctions && hasPep && <ComplianceAlert type="pep" />}
+
       {/* ── Barra de score ── */}
       {score != null && (
-        <div style={{ marginBottom: reasons.length > 0 ? 12 : 0 }}>
+        <div style={{ marginBottom: reasons.length > 0 || hasKycInfo ? 12 : 0 }}>
           <div
             style={{
               display: "flex",
@@ -177,7 +299,77 @@ export default function RiskAnalysisCard({ riskScore, riskDecision, riskReasons 
         </div>
       )}
 
-      {/* ── Motivos ── */}
+      {/* ── Info KYC snapshot ── */}
+      {hasKycInfo && (
+        <div style={{ marginBottom: reasons.length > 0 ? 12 : 0 }}>
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: C.muted,
+              textTransform: "uppercase",
+              letterSpacing: "0.07em",
+              marginBottom: 6,
+            }}
+          >
+            Dados KYC
+          </div>
+          <div
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              borderRadius: 8,
+              padding: "6px 10px",
+            }}
+          >
+            <KycInfoRow
+              label="Tipo de KYC"
+              value={kycType === "business" ? "Empresa (KYB)" : kycType === "individual" ? "Individual" : null}
+              color={C.white}
+            />
+            <KycInfoRow
+              label="Risco AML"
+              value={
+                kycRiskLevel === "high"   ? "Alto"  :
+                kycRiskLevel === "medium" ? "Médio" :
+                kycRiskLevel === "low"    ? "Baixo" : null
+              }
+              color={
+                kycRiskLevel === "high"   ? "#E5484D" :
+                kycRiskLevel === "medium" ? "#F59E0B" :
+                kycRiskLevel === "low"    ? "#34A065" : null
+              }
+            />
+            <KycInfoRow
+              label="Status PEP"
+              value={
+                kycPepStatus === "confirmed"      ? "Confirmado"       :
+                kycPepStatus === "possible_match" ? "Possível match"   :
+                kycPepStatus === "clear"          ? "Limpo"            : null
+              }
+              color={
+                kycPepStatus === "confirmed"      ? "#E5484D" :
+                kycPepStatus === "possible_match" ? "#F59E0B" :
+                kycPepStatus === "clear"          ? "#34A065" : null
+              }
+            />
+            <KycInfoRow
+              label="Sanções"
+              value={
+                kycSanctionsStatus === "confirmed"      ? "Confirmado"     :
+                kycSanctionsStatus === "possible_match" ? "Possível match" :
+                kycSanctionsStatus === "clear"          ? "Limpo"          : null
+              }
+              color={
+                kycSanctionsStatus === "confirmed"      ? "#E5484D" :
+                kycSanctionsStatus === "possible_match" ? "#F59E0B" :
+                kycSanctionsStatus === "clear"          ? "#34A065" : null
+              }
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Motivos detectados ── */}
       {reasons.length > 0 && (
         <div>
           <div

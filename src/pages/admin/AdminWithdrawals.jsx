@@ -9,13 +9,18 @@ import {
   Eye,
   AlertTriangle,
   Search,
+  ShieldAlert,
 } from "lucide-react";
 import C from "../../constants/colors";
 import Card from "../../components/ui/Card";
 import Btn from "../../components/ui/Btn";
 import PageHeader from "../../components/ui/PageHeader";
+import RiskBadge, { getRiskLevel } from "../../components/ui/RiskBadge";
+import RiskAnalysisCard from "../../components/ui/RiskAnalysisCard";
 import { useAuth } from "../../context/AuthContext";
 import { getPendingCashouts, reviewCashoutRequest } from "../../services/admin.service";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtBRL(v = 0) {
   return Number(v || 0).toLocaleString("pt-BR", {
@@ -36,6 +41,8 @@ function fmtDate(date) {
     minute: "2-digit",
   });
 }
+
+// ── Sub-componentes locais ────────────────────────────────────────────────────
 
 function StatCard({ icon, title, value, helper, accent = C.green }) {
   return (
@@ -68,7 +75,6 @@ function StatCard({ icon, title, value, helper, accent = C.green }) {
           {title}
         </div>
       </div>
-
       <div
         style={{
           fontSize: 30,
@@ -81,7 +87,6 @@ function StatCard({ icon, title, value, helper, accent = C.green }) {
       >
         {value}
       </div>
-
       <div style={{ fontSize: 12, color: C.dim }}>{helper}</div>
     </Card>
   );
@@ -89,13 +94,11 @@ function StatCard({ icon, title, value, helper, accent = C.green }) {
 
 function StatusPill({ tone = "pending", children }) {
   const map = {
-    pending: { bg: "rgba(245,158,11,0.12)", color: C.warn },
-    approved: { bg: "rgba(45,134,89,0.12)", color: C.green },
-    rejected: { bg: "rgba(229,72,77,0.12)", color: C.error },
+    pending:  { bg: "rgba(245,158,11,0.12)",  color: C.warn  },
+    approved: { bg: "rgba(45,134,89,0.12)",   color: C.green },
+    rejected: { bg: "rgba(229,72,77,0.12)",   color: C.error },
   };
-
   const current = map[tone] || map.pending;
-
   return (
     <span
       style={{
@@ -149,7 +152,9 @@ function SearchField({ value, onChange }) {
         border: `1px solid ${C.border}`,
         borderRadius: 10,
         padding: "10px 12px",
-        minWidth: 240,
+        minWidth: 210,
+        flex: 1,
+        maxWidth: 280,
       }}
     >
       <Search size={14} color={C.muted} />
@@ -171,21 +176,98 @@ function SearchField({ value, onChange }) {
   );
 }
 
+// ── Filtro de risco ────────────────────────────────────────────────────────────
+
+const FILTER_OPTIONS = [
+  { key: "all",    label: "Todos",     color: null },
+  { key: "low",    label: "Baixo",     color: "#34A065" },
+  { key: "medium", label: "Revisar",   color: "#F59E0B" },
+  { key: "high",   label: "Risco alto",color: "#E5484D" },
+];
+
+function RiskFilterBar({ active, counts, onChange }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        flexWrap: "wrap",
+      }}
+    >
+      {FILTER_OPTIONS.map(({ key, label, color }) => {
+        const isActive = active === key;
+        const count    = key === "all" ? counts.all : (counts[key] ?? 0);
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onChange(key)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "5px 11px",
+              borderRadius: 999,
+              border: isActive
+                ? `1px solid ${color || C.green}44`
+                : `1px solid ${C.border}`,
+              background: isActive
+                ? color
+                  ? `${color}18`
+                  : "rgba(45,134,89,0.12)"
+                : "transparent",
+              color: isActive ? (color || C.green) : C.muted,
+              fontSize: 12,
+              fontWeight: isActive ? 800 : 600,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              transition: "all 0.15s",
+            }}
+          >
+            {label}
+            <span
+              style={{
+                background: isActive
+                  ? color
+                    ? `${color}28`
+                    : "rgba(45,134,89,0.20)"
+                  : C.borderStrong || "rgba(255,255,255,0.08)",
+                color: isActive ? (color || C.green) : C.dim,
+                borderRadius: 999,
+                padding: "1px 6px",
+                fontSize: 10,
+                fontWeight: 700,
+              }}
+            >
+              {count}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
+
 export default function AdminWithdrawalsPage({ isMobile }) {
   const { user } = useAuth();
 
-  const [loading, setLoading] = useState(true);
-  const [actingId, setActingId] = useState("");
-  const [feedback, setFeedback] = useState("");
-  const [search, setSearch] = useState("");
-  const [rows, setRows] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [rejectionReason, setRejectionReason] = useState("");
+  const [loading,         setLoading]         = useState(true);
+  const [actingId,        setActingId]         = useState("");
+  const [feedback,        setFeedback]         = useState("");
+  const [search,          setSearch]           = useState("");
+  const [rows,            setRows]             = useState([]);
+  const [selected,        setSelected]         = useState(null);
+  const [rejectionReason, setRejectionReason]  = useState("");
+  const [riskFilter,      setRiskFilter]       = useState("all");
+  const [confirmApprove,  setConfirmApprove]   = useState(false);
 
   async function loadData(showLoading = true) {
     try {
       if (showLoading) setLoading(true);
-      const data = await getPendingCashouts();
+      const data    = await getPendingCashouts();
       const pending = Array.isArray(data?.pending) ? data.pending : [];
       setRows(pending);
       if (selected?.id) {
@@ -206,25 +288,72 @@ export default function AdminWithdrawalsPage({ isMobile }) {
     return () => clearInterval(interval);
   }, []);
 
-  const filteredRows = useMemo(() => {
-    const term = String(search || "").trim().toLowerCase();
-    if (!term) return rows;
+  // Reseta confirmação quando muda o saque selecionado
+  useEffect(() => {
+    setConfirmApprove(false);
+    setFeedback("");
+  }, [selected?.id]);
 
-    return rows.filter((item) => {
-      const name = String(item?.user?.name || "").toLowerCase();
-      const email = String(item?.user?.email || "").toLowerCase();
-      const id = String(item?.id || "").toLowerCase();
-      return name.includes(term) || email.includes(term) || id.includes(term);
+  // ── Contagens de risco (sem filtro de texto, sempre sobre rows completas) ──
+  const riskCounts = useMemo(() => {
+    const counts = { all: rows.length, low: 0, medium: 0, high: 0 };
+    for (const row of rows) {
+      const level = getRiskLevel(row.riskDecision, row.riskScore);
+      if (level) counts[level]++;
+    }
+    return counts;
+  }, [rows]);
+
+  // ── Linhas filtradas + ordenadas ──────────────────────────────────────────
+  const filteredRows = useMemo(() => {
+    let result = rows;
+
+    // Filtro de texto
+    const term = String(search || "").trim().toLowerCase();
+    if (term) {
+      result = result.filter((item) => {
+        const name  = String(item?.user?.name  || "").toLowerCase();
+        const email = String(item?.user?.email || "").toLowerCase();
+        const id    = String(item?.id          || "").toLowerCase();
+        return name.includes(term) || email.includes(term) || id.includes(term);
+      });
+    }
+
+    // Filtro de risco
+    if (riskFilter !== "all") {
+      result = result.filter(
+        (item) => getRiskLevel(item.riskDecision, item.riskScore) === riskFilter
+      );
+    }
+
+    // Ordenação: riskScore desc, depois createdAt desc
+    return [...result].sort((a, b) => {
+      const sa = a.riskScore ?? -1;
+      const sb = b.riskScore ?? -1;
+      if (sb !== sa) return sb - sa;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [rows, search]);
+  }, [rows, search, riskFilter]);
 
   const totalPendingValue = useMemo(
     () => filteredRows.reduce((acc, item) => acc + Number(item?.amount || 0), 0),
     [filteredRows]
   );
 
+  // ── Ação de aprovação / rejeição ─────────────────────────────────────────
   async function handleDecision(status) {
     if (!selected?.id || actingId) return;
+
+    // Intercepta aprovação de saques com risco médio ou alto
+    if (status === "approved") {
+      const level = getRiskLevel(selected.riskDecision, selected.riskScore);
+      if (!confirmApprove && (level === "medium" || level === "high")) {
+        setConfirmApprove(true);
+        return;
+      }
+    }
+
+    setConfirmApprove(false);
 
     if (status === "rejected" && !rejectionReason.trim()) {
       setFeedback("Preencha o motivo da rejeição antes de continuar.");
@@ -251,8 +380,15 @@ export default function AdminWithdrawalsPage({ isMobile }) {
     }
   }
 
+  // ── Colunas da tabela ────────────────────────────────────────────────────
+  const TABLE_COLS = isMobile
+    ? undefined
+    : "1fr 110px 120px 110px 140px";
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div>
+      {/* Badge de área administrativa */}
       <div
         style={{
           display: "inline-flex",
@@ -284,6 +420,7 @@ export default function AdminWithdrawalsPage({ isMobile }) {
         }
       />
 
+      {/* ── Stat cards ── */}
       <div
         style={{
           display: "grid",
@@ -307,21 +444,22 @@ export default function AdminWithdrawalsPage({ isMobile }) {
           accent={C.green}
         />
         <StatCard
+          icon={<ShieldAlert size={15} />}
+          title="Em revisão"
+          value={String(riskCounts.medium + riskCounts.high)}
+          helper={`${riskCounts.high} alto · ${riskCounts.medium} revisão`}
+          accent={C.warn}
+        />
+        <StatCard
           icon={<Eye size={15} />}
           title="Admin logado"
           value={user?.name || "Admin"}
           helper={String(user?.role || "admin")}
           accent={C.gold}
         />
-        <StatCard
-          icon={<CheckCircle2 size={15} />}
-          title="Fluxo"
-          value="Manual"
-          helper="Aprovação obrigatória para saque"
-          accent={C.green}
-        />
       </div>
 
+      {/* ── Feedback ── */}
       {feedback && (
         <div
           style={{
@@ -345,6 +483,7 @@ export default function AdminWithdrawalsPage({ isMobile }) {
         </div>
       )}
 
+      {/* ── Layout principal ── */}
       <div
         style={{
           display: "grid",
@@ -352,6 +491,7 @@ export default function AdminWithdrawalsPage({ isMobile }) {
           gap: 16,
         }}
       >
+        {/* ── Fila de solicitações ── */}
         <Card>
           <div
             style={{
@@ -359,7 +499,7 @@ export default function AdminWithdrawalsPage({ isMobile }) {
               alignItems: "center",
               justifyContent: "space-between",
               gap: 12,
-              marginBottom: 16,
+              marginBottom: 14,
               flexWrap: "wrap",
             }}
           >
@@ -371,15 +511,27 @@ export default function AdminWithdrawalsPage({ isMobile }) {
                 Apenas saques com status pendente retornam do backend atual.
               </div>
             </div>
-
             <SearchField value={search} onChange={setSearch} />
           </div>
 
+          {/* Filtro de risco */}
+          <div style={{ marginBottom: 14 }}>
+            <RiskFilterBar
+              active={riskFilter}
+              counts={riskCounts}
+              onChange={(key) => {
+                setRiskFilter(key);
+                setSelected(null);
+              }}
+            />
+          </div>
+
+          {/* Cabeçalho da tabela */}
           {!isMobile && (
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 130px 130px 160px",
+                gridTemplateColumns: TABLE_COLS,
                 gap: 12,
                 padding: "10px 14px",
                 borderBottom: `1px solid ${C.border}`,
@@ -392,19 +544,20 @@ export default function AdminWithdrawalsPage({ isMobile }) {
             >
               <span>Solicitação</span>
               <span>Valor</span>
+              <span>Risco</span>
               <span>Status</span>
               <span>Enviado em</span>
             </div>
           )}
 
+          {/* Linhas */}
           {loading ? (
             <EmptyState text="Carregando fila de saques..." loading />
           ) : filteredRows.length === 0 ? (
-            <EmptyState text="Nenhum saque pendente encontrado." />
+            <EmptyState text="Nenhum saque encontrado para este filtro." />
           ) : (
             filteredRows.map((item, index) => {
               const isSelected = selected?.id === item.id;
-
               return (
                 <button
                   key={item.id}
@@ -418,10 +571,13 @@ export default function AdminWithdrawalsPage({ isMobile }) {
                     textAlign: "left",
                     background: isSelected ? "rgba(45,134,89,0.07)" : "transparent",
                     border: "none",
-                    borderBottom: index < filteredRows.length - 1 ? `1px solid ${C.border}` : "none",
+                    borderBottom:
+                      index < filteredRows.length - 1
+                        ? `1px solid ${C.border}`
+                        : "none",
                     padding: "14px",
                     display: isMobile ? "flex" : "grid",
-                    gridTemplateColumns: "1fr 130px 130px 160px",
+                    gridTemplateColumns: TABLE_COLS,
                     gap: 12,
                     alignItems: "center",
                     flexWrap: "wrap",
@@ -429,6 +585,7 @@ export default function AdminWithdrawalsPage({ isMobile }) {
                     fontFamily: "inherit",
                   }}
                 >
+                  {/* Solicitação */}
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 800, color: C.white, marginBottom: 4 }}>
                       {item?.user?.name || "Usuário sem nome"}
@@ -436,19 +593,28 @@ export default function AdminWithdrawalsPage({ isMobile }) {
                     <div style={{ fontSize: 12, color: C.muted, marginBottom: 4 }}>
                       {item?.user?.email || "Sem email"}
                     </div>
-                    <div style={{ fontSize: 11, color: C.dim }}>
-                      ID {item.id}
-                    </div>
+                    <div style={{ fontSize: 11, color: C.dim }}>ID {item.id}</div>
                   </div>
 
+                  {/* Valor */}
                   <div style={{ fontSize: 14, fontWeight: 800, color: C.white }}>
                     {`R$ ${fmtBRL(item?.amount || 0)}`}
                   </div>
 
+                  {/* Risco */}
+                  <div>
+                    <RiskBadge
+                      riskDecision={item.riskDecision}
+                      riskScore={item.riskScore}
+                    />
+                  </div>
+
+                  {/* Status */}
                   <div>
                     <StatusPill tone="pending">Pendente</StatusPill>
                   </div>
 
+                  {/* Data */}
                   <div style={{ fontSize: 12, color: C.muted }}>
                     {fmtDate(item?.createdAt)}
                   </div>
@@ -458,27 +624,31 @@ export default function AdminWithdrawalsPage({ isMobile }) {
           )}
         </Card>
 
+        {/* ── Painel de revisão ── */}
         <Card>
           <div style={{ fontSize: 16, fontWeight: 800, color: C.white, marginBottom: 4 }}>
             Revisão da solicitação
           </div>
           <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>
-            {selected ? "Valide os dados antes de aprovar ou rejeitar." : "Selecione um saque na fila ao lado."}
+            {selected
+              ? "Valide os dados antes de aprovar ou rejeitar."
+              : "Selecione um saque na fila ao lado."}
           </div>
 
           {!selected ? (
             <EmptyState text="Nenhuma solicitação selecionada." />
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
+              {/* Campos informativos */}
               {[
-                ["Nome", selected?.user?.name],
-                ["Email", selected?.user?.email],
-                ["Role", selected?.user?.role],
-                ["Status da conta", selected?.user?.accountStatus],
-                ["Valor", `R$ ${fmtBRL(selected?.amount || 0)}`],
-                ["Valor congelado", `R$ ${fmtBRL(selected?.walletFrozenAmount || 0)}`],
-                ["Descrição", selected?.description || "—"],
-                ["Criado em", fmtDate(selected?.createdAt)],
+                ["Nome",              selected?.user?.name],
+                ["Email",             selected?.user?.email],
+                ["Role",              selected?.user?.role],
+                ["Status da conta",   selected?.user?.accountStatus],
+                ["Valor",             `R$ ${fmtBRL(selected?.amount || 0)}`],
+                ["Valor congelado",   `R$ ${fmtBRL(selected?.walletFrozenAmount || 0)}`],
+                ["Descrição",         selected?.description || "—"],
+                ["Criado em",         fmtDate(selected?.createdAt)],
               ].map(([label, value]) => (
                 <div
                   key={label}
@@ -506,24 +676,14 @@ export default function AdminWithdrawalsPage({ isMobile }) {
                 </div>
               ))}
 
-              <div
-                style={{
-                  background: "rgba(245,158,11,0.07)",
-                  border: "1px solid rgba(245,158,11,0.18)",
-                  borderRadius: 12,
-                  padding: "12px 14px",
-                  display: "flex",
-                  gap: 10,
-                  alignItems: "flex-start",
-                }}
-              >
-                <AlertTriangle size={15} color={C.warn} style={{ flexShrink: 0, marginTop: 1 }} />
-                <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
-                  Como o fluxo é manual, aprove apenas após verificar KYC, origem do saldo,
-                  conta do usuário e qualquer sinal de risco operacional.
-                </div>
-              </div>
+              {/* ── Análise de risco ── */}
+              <RiskAnalysisCard
+                riskScore={selected?.riskScore}
+                riskDecision={selected?.riskDecision}
+                riskReasons={selected?.riskReasons}
+              />
 
+              {/* Motivo de rejeição */}
               <div>
                 <label
                   style={{
@@ -536,7 +696,6 @@ export default function AdminWithdrawalsPage({ isMobile }) {
                 >
                   Motivo da rejeição
                 </label>
-
                 <textarea
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
@@ -553,37 +712,88 @@ export default function AdminWithdrawalsPage({ isMobile }) {
                     fontFamily: "inherit",
                     fontSize: 13,
                     outline: "none",
+                    boxSizing: "border-box",
                   }}
                 />
               </div>
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                  gap: 8,
-                }}
-              >
-                <Btn
-                  variant="primary"
-                  onClick={() => handleDecision("approved")}
-                  disabled={actingId === selected.id}
-                  icon={<CheckCircle2 size={14} />}
-                  fullWidth
+              {/* ── Confirmação de risco ou botões normais ── */}
+              {confirmApprove ? (
+                <div
+                  style={{
+                    borderRadius: 12,
+                    padding: "14px",
+                    background: "rgba(245,158,11,0.07)",
+                    border: "1px solid rgba(245,158,11,0.22)",
+                    display: "grid",
+                    gap: 12,
+                  }}
                 >
-                  {actingId === selected.id ? "Processando..." : "Aprovar saque"}
-                </Btn>
-
-                <Btn
-                  variant="danger"
-                  onClick={() => handleDecision("rejected")}
-                  disabled={actingId === selected.id}
-                  icon={<XCircle size={14} />}
-                  fullWidth
+                  <div style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
+                    <AlertTriangle
+                      size={15}
+                      color={C.warn}
+                      style={{ flexShrink: 0, marginTop: 1 }}
+                    />
+                    <span style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
+                      Este saque possui risco elevado. Confirme que revisou todos
+                      os dados, o histórico do usuário e a origem do saldo antes
+                      de aprovar.
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 8,
+                    }}
+                  >
+                    <Btn
+                      variant="secondary"
+                      onClick={() => setConfirmApprove(false)}
+                      fullWidth
+                    >
+                      Cancelar
+                    </Btn>
+                    <Btn
+                      variant="primary"
+                      onClick={() => handleDecision("approved")}
+                      disabled={!!actingId}
+                      icon={<CheckCircle2 size={14} />}
+                      fullWidth
+                    >
+                      {actingId ? "Processando..." : "Confirmar aprovação"}
+                    </Btn>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                    gap: 8,
+                  }}
                 >
-                  {actingId === selected.id ? "Processando..." : "Rejeitar saque"}
-                </Btn>
-              </div>
+                  <Btn
+                    variant="primary"
+                    onClick={() => handleDecision("approved")}
+                    disabled={actingId === selected.id}
+                    icon={<CheckCircle2 size={14} />}
+                    fullWidth
+                  >
+                    {actingId === selected.id ? "Processando..." : "Aprovar saque"}
+                  </Btn>
+                  <Btn
+                    variant="danger"
+                    onClick={() => handleDecision("rejected")}
+                    disabled={actingId === selected.id}
+                    icon={<XCircle size={14} />}
+                    fullWidth
+                  >
+                    {actingId === selected.id ? "Processando..." : "Rejeitar saque"}
+                  </Btn>
+                </div>
+              )}
             </div>
           )}
         </Card>

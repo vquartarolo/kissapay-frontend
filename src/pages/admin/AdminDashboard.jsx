@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -8,6 +9,7 @@ import {
   LayoutDashboard, TrendingUp, TrendingDown, RefreshCw,
   Wallet, Receipt, Users, ArrowRightLeft, Percent,
   AlertTriangle, ShieldOff, Clock, Ban,
+  ShieldCheck, ArrowDownToLine, GitPullRequestArrow, ShieldAlert,
 } from "lucide-react";
 import C from "../../constants/colors";
 import {
@@ -16,6 +18,9 @@ import {
   getDashboardRevenueSeries,
   getDashboardTopSellers,
   getDashboardAttention,
+  getPendingCashouts,
+  listApprovals,
+  getSecurityStats,
 } from "../../services/admin.service";
 
 /* ─── Palette refs (não usar CSS vars dentro de SVG/recharts) ─── */
@@ -240,6 +245,83 @@ function SectionHeader({ title, sub }) {
   );
 }
 
+/* ─── OpCard: quick-action card for pending counts ───────────── */
+function OpCard({ icon, label, value, href, color, loading, nav }) {
+  const hasAlert = !loading && value > 0;
+  return (
+    <div
+      className="dash-kpi"
+      role="button"
+      tabIndex={0}
+      aria-label={`${label}: ${loading ? "carregando" : value}`}
+      onClick={() => nav(href)}
+      onKeyDown={(e) => e.key === "Enter" && nav(href)}
+      style={{
+        cursor:      "pointer",
+        borderColor: hasAlert ? color + "40" : undefined,
+        position:    "relative",
+        overflow:    "hidden",
+      }}
+    >
+      {hasAlert && (
+        <span
+          style={{
+            position:     "absolute",
+            top:          10,
+            right:        10,
+            width:        7,
+            height:       7,
+            borderRadius: "50%",
+            background:   color,
+            boxShadow:    `0 0 8px ${color}88`,
+          }}
+        />
+      )}
+      <div style={{ marginBottom: 14 }}>
+        <div
+          style={{
+            width:          36,
+            height:         36,
+            borderRadius:   10,
+            background:     color + "18",
+            border:         `1px solid ${color}28`,
+            display:        "flex",
+            alignItems:     "center",
+            justifyContent: "center",
+            color,
+          }}
+        >
+          {icon}
+        </div>
+      </div>
+      <div
+        style={{
+          fontSize:           loading ? 20 : 28,
+          fontWeight:         900,
+          color:              hasAlert ? color : P.white,
+          letterSpacing:      "-0.04em",
+          lineHeight:         1,
+          marginBottom:       4,
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {loading ? "—" : value}
+      </div>
+      <div
+        style={{
+          fontSize:      10,
+          fontWeight:    700,
+          textTransform: "uppercase",
+          letterSpacing: "0.09em",
+          color:         P.muted,
+        }}
+      >
+        {label}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Mini spinner ────────────────────────────────────────────── */
 function Spinner() {
   return (
@@ -256,6 +338,8 @@ function Spinner() {
    MAIN COMPONENT
 ══════════════════════════════════════════════════════════════════════ */
 export default function AdminDashboard({ isMobile }) {
+  const navigate = useNavigate();
+
   const [period,      setPeriod]      = useState(30);
   const [loading,     setLoading]     = useState(true);
   const [overview,    setOverview]    = useState(null);
@@ -265,29 +349,57 @@ export default function AdminDashboard({ isMobile }) {
   const [attention,   setAttention]   = useState({ blocked: [], kycPending: [], noTwoFA: [] });
   const [error,       setError]       = useState("");
   const [refreshedAt, setRefreshedAt] = useState(null);
+  const [opCounts,    setOpCounts]    = useState({ kyc: 0, withdrawals: 0, approvals: 0, security: 0 });
+  const [opLoading,   setOpLoading]   = useState(true);
+
+  function extractCount(r) {
+    if (!r || r.status !== "fulfilled") return 0;
+    const v = r.value;
+    if (!v) return 0;
+    if (Array.isArray(v))            return v.length;
+    if (typeof v.total === "number") return v.total;
+    if (Array.isArray(v.items))      return v.items.length;
+    return 0;
+  }
 
   const load = useCallback(async (p = period, showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
       setError("");
 
-      const [ov, vol, rev, top, attn] = await Promise.all([
+      const [ov, vol, rev, top, attn, opResults] = await Promise.all([
         getDashboardOverview(p),
         getDashboardVolumeSeries(p),
         getDashboardRevenueSeries(p),
         getDashboardTopSellers(p),
         getDashboardAttention(),
+        Promise.allSettled([
+          getPendingCashouts(),
+          listApprovals({ status: "pending", limit: 1 }),
+          getSecurityStats(),
+        ]),
       ]);
 
       setOverview(ov);
       setVolSeries(Array.isArray(vol?.series) ? vol.series : []);
       setRevSeries(Array.isArray(rev?.series) ? rev.series : []);
       setTopSellers(Array.isArray(top?.items) ? top.items : []);
-      setAttention({
+
+      const attnData = {
         blocked:    Array.isArray(attn?.blocked)    ? attn.blocked    : [],
         kycPending: Array.isArray(attn?.kycPending) ? attn.kycPending : [],
         noTwoFA:    Array.isArray(attn?.noTwoFA)    ? attn.noTwoFA    : [],
+      };
+      setAttention(attnData);
+
+      const [cashR, apprR, secR] = opResults;
+      setOpCounts({
+        kyc:         attnData.kycPending.length,
+        withdrawals: extractCount(cashR),
+        approvals:   extractCount(apprR),
+        security:    secR.status === "fulfilled" ? (secR.value?.unresolved ?? 0) : 0,
       });
+      setOpLoading(false);
       setRefreshedAt(new Date());
     } catch (err) {
       console.error("Erro no dashboard:", err);
@@ -496,6 +608,34 @@ export default function AdminDashboard({ isMobile }) {
           {error}
         </div>
       )}
+
+      {/* ── COMMAND CENTER ────────────────────────────────────────── */}
+      <div style={{ marginBottom: 18 }}>
+        <div
+          style={{
+            fontSize:      9,
+            fontWeight:    700,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color:         P.muted,
+            marginBottom:  10,
+          }}
+        >
+          Central de Operações
+        </div>
+        <div
+          style={{
+            display:             "grid",
+            gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)",
+            gap:                 12,
+          }}
+        >
+          <OpCard icon={<ShieldCheck size={16} />}       label="KYC Pendente"       value={opCounts.kyc}         href="/admin/kyc"          color="#F59E0B" loading={opLoading} nav={navigate} />
+          <OpCard icon={<ArrowDownToLine size={16} />}   label="Saques Pendentes"   value={opCounts.withdrawals} href="/admin/withdrawals"  color="#3B82F6" loading={opLoading} nav={navigate} />
+          <OpCard icon={<GitPullRequestArrow size={16} />} label="Aprovações"       value={opCounts.approvals}   href="/admin/approvals"   color="#8B5CF6" loading={opLoading} nav={navigate} />
+          <OpCard icon={<ShieldAlert size={16} />}       label="Alertas SOC"        value={opCounts.security}    href="/admin/security"    color="#EF4444" loading={opLoading} nav={navigate} />
+        </div>
+      </div>
 
       {/* ── KPI CARDS ─────────────────────────────────────────────── */}
       {loading ? (

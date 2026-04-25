@@ -285,3 +285,44 @@ export async function getDashboardAttention() {
   const { data } = await api.get(`/admin/dashboard/attention`);
   return data;
 }
+
+/* =========================
+   SEGURANÇA — SOC
+========================= */
+export async function getSecurityStats() {
+  const { data } = await api.get("/admin/security/stats");
+  return data;
+}
+
+export async function getSecurityEvents(params = {}) {
+  const q = new URLSearchParams();
+  if (params.severity && params.severity !== "all") q.set("severity", params.severity);
+  if (params.type && params.type !== "all")         q.set("type",     params.type);
+  if (params.resolved !== undefined && params.resolved !== "all") q.set("resolved", params.resolved);
+  if (params.page)  q.set("page",  String(params.page));
+  if (params.limit) q.set("limit", String(params.limit));
+  const { data } = await api.get(`/admin/security/events${q.toString() ? `?${q}` : ""}`);
+  return data;
+}
+
+export async function getSecuritySuspiciousUsers(limit = 10) {
+  const { data } = await api.get(`/admin/security/suspicious?limit=${limit}`);
+  return data;
+}
+
+export async function resolveSecurityEvent(id) {
+  const { data } = await api.post(`/admin/security/events/${id}/resolve`);
+  return data;
+}
+
+/* =========================
+   BACKUP
+========================= */
+export async function createAdminBackup() {
+  const { data } = await api.post("/admin/backup");
+  return data;
+}
+
+export function getBackupDownloadUrl() {
+  return "/admin/backup/download";
+}

@@ -72,33 +72,38 @@ const STYLES = `
   .d-live { animation:d-pulse 2.2s ease-in-out infinite; }
 
   .d-kpi {
-    background: ${P.card};
     border: 1px solid ${P.border};
     border-radius: 18px;
     padding: 20px 22px 18px;
-    transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+    transition: transform 0.22s cubic-bezier(.22,.68,0,1.2), box-shadow 0.22s, border-color 0.22s;
     cursor: default;
     position: relative;
     overflow: hidden;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset, 0 4px 18px rgba(0,0,0,0.25);
   }
   .d-kpi:hover {
-    transform: translateY(-4px);
-    border-color: ${P.borderMed};
-    box-shadow: 0 16px 48px rgba(0,0,0,0.28);
+    transform: translateY(-3px) scale(1.02);
+    border-color: var(--kc-border, ${P.borderMed});
+    box-shadow: 0 24px 64px rgba(0,0,0,0.45), var(--kc-glow, 0 0 0 transparent), 0 1px 0 rgba(255,255,255,0.07) inset;
   }
   .d-kpi-hero {
-    background: linear-gradient(135deg, #162419 0%, #141417 100%);
-    border: 1px solid rgba(45,134,89,0.24);
+    background: linear-gradient(145deg, #0B1D12 0%, #101417 55%, #0A0A0D 100%);
+    border: 1px solid rgba(45,134,89,0.30);
     border-radius: 18px;
-    padding: 24px 26px 20px;
-    transition: transform 0.18s, box-shadow 0.18s;
+    padding: 28px 28px 24px;
+    transition: transform 0.22s cubic-bezier(.22,.68,0,1.2), box-shadow 0.22s;
     cursor: default;
     position: relative;
     overflow: hidden;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 0 0 1px rgba(45,134,89,0.10) inset, 0 8px 32px rgba(0,0,0,0.38), 0 0 70px rgba(45,134,89,0.07);
   }
   .d-kpi-hero:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 16px 48px rgba(0,0,0,0.32), 0 0 40px rgba(45,134,89,0.08);
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 28px 80px rgba(0,0,0,0.55), 0 0 90px rgba(45,134,89,0.16), 0 0 0 1px rgba(45,134,89,0.20) inset;
   }
   .d-op {
     background: ${P.card};
@@ -317,30 +322,34 @@ function HeroKpiCard({ value, delta, period, volSeries, delay = 0 }) {
   const up      = delta > 0;
   const hasData = delta != null;
   return (
-    <div className="d-kpi-hero d-up" style={{ animationDelay: `${delay}ms`, minHeight: 168 }}>
-      <div style={{ position: "absolute", top: -70, left: -70, width: 250, height: 250, borderRadius: "50%", background: "radial-gradient(circle, rgba(45,134,89,0.15) 0%, transparent 65%)", pointerEvents: "none" }} />
+    <div className="d-kpi-hero d-up" style={{ animationDelay: `${delay}ms`, minHeight: 220 }}>
+      {/* Primary radial glow */}
+      <div style={{ position: "absolute", top: -90, left: -90, width: 340, height: 340, borderRadius: "50%", background: "radial-gradient(circle, rgba(45,134,89,0.30) 0%, transparent 65%)", pointerEvents: "none" }} />
+      {/* Secondary diffuse glow */}
+      <div style={{ position: "absolute", top: "20%", left: "10%", width: 240, height: 240, borderRadius: "50%", background: "radial-gradient(circle, rgba(45,134,89,0.14) 0%, transparent 70%)", pointerEvents: "none", filter: "blur(28px)" }} />
+      {/* Sparkline with glow */}
       {volSeries.length > 0 && (
-        <div style={{ position: "absolute", bottom: 0, right: 0, opacity: 0.18, pointerEvents: "none" }}>
-          <Sparkline data={volSeries} color={P.green} width={200} height={78} />
+        <div style={{ position: "absolute", bottom: 0, right: 0, opacity: 0.52, pointerEvents: "none", filter: "drop-shadow(0 0 12px rgba(45,134,89,0.70))" }}>
+          <Sparkline data={volSeries} color={P.green} width={224} height={90} />
         </div>
       )}
       <div style={{ position: "relative", zIndex: 1 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, background: "rgba(45,134,89,0.14)", border: "1px solid rgba(45,134,89,0.25)", color: P.greenBright, fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, background: "rgba(45,134,89,0.14)", border: "1px solid rgba(45,134,89,0.30)", color: P.greenBright, fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
             <Wallet size={10} />
             Volume processado
           </div>
           {hasData && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 9px", borderRadius: 8, fontSize: 11, fontWeight: 800, background: up ? "rgba(45,134,89,0.14)" : "rgba(239,68,68,0.12)", color: up ? P.greenBright : P.red, border: `1px solid ${up ? "rgba(45,134,89,0.25)" : "rgba(239,68,68,0.25)"}` }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 9px", borderRadius: 8, fontSize: 11, fontWeight: 800, background: up ? "rgba(45,134,89,0.14)" : "rgba(239,68,68,0.12)", color: up ? P.greenBright : P.red, border: `1px solid ${up ? "rgba(45,134,89,0.30)" : "rgba(239,68,68,0.28)"}` }}>
               {up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
               {Math.abs(delta)}%
             </span>
           )}
         </div>
-        <div style={{ fontSize: 40, fontWeight: 900, color: P.white, letterSpacing: "-0.05em", lineHeight: 1, marginBottom: 10, fontVariantNumeric: "tabular-nums" }}>
+        <div style={{ fontSize: 56, fontWeight: 900, color: P.white, letterSpacing: "-0.05em", lineHeight: 1, marginBottom: 14, fontVariantNumeric: "tabular-nums", textShadow: "0 0 48px rgba(45,134,89,0.50)" }}>
           {value}
         </div>
-        <div style={{ fontSize: 12, color: P.muted }}>
+        <div style={{ fontSize: 12, color: P.muted, letterSpacing: "0.01em" }}>
           Transações aprovadas — últimos {period} dias
         </div>
       </div>
@@ -356,9 +365,17 @@ function KpiCard({ icon, label, value, delta, helper, accent, delay = 0 }) {
   const neutral = delta === 0 || delta == null;
   const hasData = typeof delta === "number";
   return (
-    <div className="d-kpi d-up" style={{ animationDelay: `${delay}ms` }}>
+    <div
+      className="d-kpi d-up"
+      style={{
+        animationDelay: `${delay}ms`,
+        background: `linear-gradient(155deg, ${accent}0E 0%, ${P.card} 58%)`,
+        "--kc-border": `${accent}42`,
+        "--kc-glow": `0 0 36px ${accent}24`,
+      }}
+    >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, background: `${accent}18`, border: `1px solid ${accent}28`, display: "flex", alignItems: "center", justifyContent: "center", color: accent }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, background: `${accent}1C`, border: `1px solid ${accent}32`, display: "flex", alignItems: "center", justifyContent: "center", color: accent, boxShadow: `0 0 18px ${accent}48` }}>
           {icon}
         </div>
         {hasData && !neutral && (
@@ -368,7 +385,7 @@ function KpiCard({ icon, label, value, delta, helper, accent, delay = 0 }) {
           </span>
         )}
       </div>
-      <div style={{ fontSize: 26, fontWeight: 900, color: P.white, letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 4, fontVariantNumeric: "tabular-nums" }}>{value}</div>
+      <div style={{ fontSize: 32, fontWeight: 900, color: P.white, letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 4, fontVariantNumeric: "tabular-nums" }}>{value}</div>
       <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: P.dim, marginBottom: 6 }}>{label}</div>
       <div style={{ fontSize: 11, color: P.muted }}>{helper}</div>
     </div>

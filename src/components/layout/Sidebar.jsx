@@ -110,11 +110,11 @@ const ICON_COL = 18;
 function NavBadge({ count, severity = "blue" }) {
   if (!count || count <= 0) return null;
   const COLORS = {
-    blue:  { color: "#3B82F6", bg: "rgba(59,130,246,0.15)"  },
-    amber: { color: "#F59E0B", bg: "rgba(245,158,11,0.15)"  },
-    red:   { color: "#EF4444", bg: "rgba(239,68,68,0.15)"   },
+    blue:  { color: "#3B82F6", bg: "rgba(59,130,246,0.18)",  glow: "none"                                    },
+    amber: { color: "#F59E0B", bg: "rgba(245,158,11,0.18)",  glow: "0 0 8px rgba(245,158,11,0.45)"           },
+    red:   { color: "#EF4444", bg: "rgba(239,68,68,0.18)",   glow: "0 0 8px rgba(239,68,68,0.45)"            },
   };
-  const { color, bg } = COLORS[severity] || COLORS.blue;
+  const { color, bg, glow } = COLORS[severity] || COLORS.blue;
   return (
     <span
       aria-label={`${count} pendentes`}
@@ -122,16 +122,18 @@ function NavBadge({ count, severity = "blue" }) {
         display:        "inline-flex",
         alignItems:     "center",
         justifyContent: "center",
-        minWidth:       16,
-        height:         16,
+        minWidth:       18,
+        height:         17,
         borderRadius:   99,
         background:     bg,
         color,
         fontSize:       9,
         fontWeight:     800,
-        padding:        "0 4px",
+        padding:        "0 5px",
         flexShrink:     0,
-        letterSpacing:  "0.01em",
+        letterSpacing:  "0.02em",
+        border:         `1px solid ${color}30`,
+        boxShadow:      glow,
       }}
     >
       {count > 99 ? "99+" : count}
@@ -167,16 +169,22 @@ function SidebarBtn({
     marginBottom:         1,
     borderRadius:         8,
     border:               "none",
-    background:           highlight ? C.cardSoft : "transparent",
+    background:           isActive
+      ? "linear-gradient(90deg, rgba(45,134,89,0.14) 0%, rgba(45,134,89,0.04) 100%)"
+      : highlight
+        ? "rgba(255,255,255,0.04)"
+        : "transparent",
     color:                highlight ? C.white : C.muted,
-    fontSize:             isChild ? 13.5 : 15,
+    fontSize:             isChild ? 13 : 13.5,
     fontWeight:           highlight ? 700 : 500,
     cursor:               "pointer",
-    transition:           "color 0.1s, background 0.1s",
+    transition:           "color 0.12s, background 0.12s, transform 0.1s",
     textAlign:            "left",
     fontFamily:           "inherit",
     boxSizing:            "border-box",
     letterSpacing:        "0.01em",
+    transform:            isHovered && !isActive ? "translateX(1px)" : "translateX(0)",
+    boxShadow:            isActive ? "inset 0 0 0 1px rgba(45,134,89,0.15)" : "none",
   };
 
   return (
@@ -190,27 +198,43 @@ function SidebarBtn({
       {/* Active accent bar */}
       <span
         style={{
-          position:  "absolute",
-          left:      0,
-          top:       "50%",
-          transform: "translateY(-50%)",
-          width:     2,
-          height:    accentActive ? "52%" : 0,
+          position:     "absolute",
+          left:         0,
+          top:          "50%",
+          transform:    "translateY(-50%)",
+          width:        accentActive ? 3 : 0,
+          height:       accentActive ? "56%" : 0,
           borderRadius: 2,
-          background: C.green,
-          transition: "height 0.15s ease",
+          background:   `linear-gradient(180deg, ${C.green}, rgba(45,134,89,0.4))`,
+          boxShadow:    accentActive ? `0 0 8px rgba(45,134,89,0.6)` : "none",
+          transition:   "width 0.12s ease, height 0.12s ease, box-shadow 0.12s ease",
         }}
       />
 
-      <item.icon
-        size={isChild ? 12 : 14}
-        strokeWidth={highlight ? 2.3 : 1.7}
+      {/* Icon with subtle bg when active */}
+      <span
         style={{
-          color:       accentActive ? C.green : "inherit",
-          justifySelf: "center",
-          display:     "block",
+          justifySelf:    "center",
+          display:        "flex",
+          alignItems:     "center",
+          justifyContent: "center",
+          width:          22,
+          height:         22,
+          borderRadius:   6,
+          background:     accentActive ? "rgba(45,134,89,0.12)" : "transparent",
+          transition:     "background 0.12s",
+          flexShrink:     0,
         }}
-      />
+      >
+        <item.icon
+          size={isChild ? 12 : 13}
+          strokeWidth={highlight ? 2.4 : 1.8}
+          style={{
+            color:   accentActive ? C.green : "inherit",
+            display: "block",
+          }}
+        />
+      </span>
 
       <span style={{ lineHeight: 1 }}>{item.label}</span>
 
@@ -221,7 +245,7 @@ function SidebarBtn({
           style={{
             transform:  isOpen ? "rotate(180deg)" : "rotate(0deg)",
             transition: "transform 0.18s",
-            opacity:    0.5,
+            opacity:    0.4,
           }}
         />
       ) : badge ? (
@@ -229,13 +253,13 @@ function SidebarBtn({
       ) : (
         <span
           style={{
-            width:      5,
-            height:     5,
+            width:        5,
+            height:       5,
             borderRadius: "50%",
-            background: C.green,
-            boxShadow:  isActive ? `0 0 6px ${C.green}` : "none",
-            opacity:    isActive ? 1 : 0,
-            transition: "opacity 0.15s",
+            background:   C.green,
+            boxShadow:    isActive ? `0 0 8px ${C.green}` : "none",
+            opacity:      isActive ? 1 : 0,
+            transition:   "opacity 0.15s, box-shadow 0.15s",
           }}
         />
       )}
@@ -276,15 +300,31 @@ function AdminGroupLabel({ label, first = false }) {
   return (
     <div
       style={{
-        fontSize:      8,
-        fontWeight:    700,
-        letterSpacing: "0.13em",
-        textTransform: "uppercase",
-        color:         C.dim,
-        padding:       first ? "6px 12px 3px" : "10px 12px 3px",
+        display:        "flex",
+        alignItems:     "center",
+        gap:            7,
+        padding:        first ? "6px 12px 3px" : "10px 12px 3px",
       }}
     >
-      {label}
+      <span
+        style={{
+          flex:       1,
+          height:     1,
+          background: `linear-gradient(90deg, rgba(255,255,255,0.06) 0%, transparent 100%)`,
+        }}
+      />
+      <span
+        style={{
+          fontSize:      8,
+          fontWeight:    800,
+          letterSpacing: "0.15em",
+          textTransform: "uppercase",
+          color:         "rgba(90,106,126,0.7)",
+          whiteSpace:    "nowrap",
+        }}
+      >
+        {label}
+      </span>
     </div>
   );
 }
@@ -498,7 +538,7 @@ export default function Sidebar() {
 
         {mainNav.map(renderItem)}
 
-        <div style={{ height: 1, background: C.border, margin: "10px 4px" }} />
+        <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${C.border}, transparent)`, margin: "10px 4px" }} />
 
         <div
           style={{
@@ -518,28 +558,31 @@ export default function Sidebar() {
         {/* ── Admin Area ──────────────────────────────────────── */}
         {isAdmin && (
           <>
-            <div style={{ height: 1, background: C.border, margin: "10px 4px" }} />
+            <div style={{ height: 1, background: `linear-gradient(90deg, transparent, rgba(45,134,89,0.25), transparent)`, margin: "12px 4px 8px" }} />
 
             {/* Admin section header */}
             <div
               style={{
-                display:       "flex",
-                alignItems:    "center",
+                display:        "flex",
+                alignItems:     "center",
                 justifyContent: "space-between",
-                padding:       "2px 12px 5px",
+                padding:        "0 12px 6px",
               }}
             >
-              <span
-                style={{
-                  fontSize:      9,
-                  fontWeight:    700,
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  color:         C.dim,
-                }}
-              >
-                Área Administrativa
-              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <ShieldCheck size={9} style={{ color: C.green, opacity: 0.7 }} />
+                <span
+                  style={{
+                    fontSize:      9,
+                    fontWeight:    800,
+                    letterSpacing: "0.14em",
+                    textTransform: "uppercase",
+                    color:         "rgba(45,134,89,0.8)",
+                  }}
+                >
+                  Área Administrativa
+                </span>
+              </div>
               {totalAdminPending > 0 && (
                 <span
                   style={{
@@ -547,13 +590,15 @@ export default function Sidebar() {
                     alignItems:     "center",
                     justifyContent: "center",
                     minWidth:       18,
-                    height:         16,
+                    height:         17,
                     borderRadius:   99,
-                    background:     "rgba(239,68,68,0.15)",
+                    background:     "rgba(239,68,68,0.18)",
                     color:          "#EF4444",
                     fontSize:       9,
                     fontWeight:     800,
                     padding:        "0 5px",
+                    border:         "1px solid rgba(239,68,68,0.3)",
+                    boxShadow:      "0 0 8px rgba(239,68,68,0.35)",
                   }}
                 >
                   {totalAdminPending > 99 ? "99+" : totalAdminPending}

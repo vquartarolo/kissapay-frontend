@@ -10,6 +10,8 @@ import {
   Settings,
   LayoutDashboard,
   GitPullRequestArrow,
+  BookOpen,
+  FileText,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -40,7 +42,9 @@ function getPath(id) {
     adminManage: "/admin/manage",
     adminAudit: "/admin/audit",
     adminConfig: "/admin/config",
-    adminApprovals: "/admin/approvals",
+    adminApprovals:  "/admin/approvals",
+    adminAccounting:  "/admin/accounting",
+    adminCompliance:  "/admin/compliance",
   };
   return map[id] || "/dashboard";
 }
@@ -48,13 +52,15 @@ function getPath(id) {
 const ICON_COL = 18;
 
 const ADMIN_ITEMS = [
-  { id: "adminDashboard",  label: "Dashboard",          icon: LayoutDashboard      },
-  { id: "adminKyc",        label: "KYC",                icon: ShieldCheck           },
-  { id: "adminWithdrawals",label: "Saques / Aprovações",icon: Wallet               },
-  { id: "adminApprovals",  label: "Aprovações",         icon: GitPullRequestArrow  },
-  { id: "adminManage",     label: "Gerenciar",          icon: Users                },
-  { id: "adminAudit",      label: "Auditoria",          icon: ScrollText           },
-  { id: "adminConfig",     label: "Config. padrão",     icon: Settings             },
+  { id: "adminDashboard",  label: "Dashboard",          icon: LayoutDashboard     },
+  { id: "adminKyc",        label: "KYC",                icon: ShieldCheck          },
+  { id: "adminWithdrawals",label: "Saques / Aprovações",icon: Wallet              },
+  { id: "adminApprovals",  label: "Aprovações",         icon: GitPullRequestArrow },
+  { id: "adminAccounting", label: "Contabilidade",      icon: BookOpen            },
+  { id: "adminCompliance", label: "Compliance",          icon: FileText            },
+  { id: "adminManage",     label: "Gerenciar",          icon: Users               },
+  { id: "adminAudit",      label: "Auditoria",          icon: ScrollText          },
+  { id: "adminConfig",     label: "Config. padrão",     icon: Settings            },
 ];
 
 function SidebarBtn({
@@ -216,7 +222,9 @@ export default function Sidebar() {
     if (p.includes("/admin/manage")) return "adminManage";
     if (p.includes("/admin/audit"))      return "adminAudit";
     if (p.includes("/admin/config"))     return "adminConfig";
-    if (p.includes("/admin/approvals"))  return "adminApprovals";
+    if (p.includes("/admin/approvals"))   return "adminApprovals";
+    if (p.includes("/admin/accounting"))  return "adminAccounting";
+    if (p.includes("/admin/compliance")) return "adminCompliance";
     return "dashboard";
   }, [location.pathname]);
 

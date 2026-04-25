@@ -38,7 +38,9 @@ import AdminManagePage from "./pages/admin/AdminManage";
 import AdminAuditPage from "./pages/admin/AdminAudit";
 import AdminConfigPage from "./pages/admin/AdminConfig";
 import AdminDashboardPage from "./pages/admin/AdminDashboard";
-import AdminApprovalsPage from "./pages/admin/AdminApprovals";
+import AdminApprovalsPage   from "./pages/admin/AdminApprovals";
+import AdminAccountingPage  from "./pages/admin/AdminAccounting";
+import AdminCompliancePage  from "./pages/admin/AdminCompliance";
 
 // Domínios próprios da plataforma — nunca tratados como domínios de clientes
 const _OWN_HOSTNAMES = new Set(["localhost", "127.0.0.1", "siteorionpay.vercel.app"]);
@@ -208,6 +210,22 @@ function AppRoutes({ isMobile, user }) {
         element={
           <AdminRoute user={user} isMobile={isMobile}>
             {(mobile) => <AdminApprovalsPage isMobile={mobile} />}
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/accounting"
+        element={
+          <AdminRoute user={user} isMobile={isMobile}>
+            {(mobile) => <AdminAccountingPage isMobile={mobile} />}
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/compliance"
+        element={
+          <AdminRoute user={user} isMobile={isMobile} allowAuditOnly>
+            {(mobile) => <AdminCompliancePage isMobile={mobile} />}
           </AdminRoute>
         }
       />

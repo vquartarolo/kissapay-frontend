@@ -21,6 +21,7 @@ import Card from "../../components/ui/Card";
 import Btn from "../../components/ui/Btn";
 import PageHeader from "../../components/ui/PageHeader";
 import { useAuth } from "../../context/AuthContext";
+import { A, ADMIN_CSS, ARail, ARailCell } from "../../components/admin/AdminDS";
 import {
   getAdminKycList,
   reviewAdminKyc,
@@ -597,82 +598,35 @@ export default function AdminKycPage({ isMobile }) {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div>
-      {/* Area badge */}
-      <div
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 7,
-          padding: "5px 12px",
-          borderRadius: 999,
-          marginBottom: 14,
-          border: "1px solid rgba(45,134,89,0.20)",
-          background: "rgba(45,134,89,0.07)",
-          color: C.green,
-          fontSize: 11,
-          fontWeight: 800,
-          letterSpacing: "0.06em",
-          textTransform: "uppercase",
-        }}
-      >
-        <Shield size={12} />
-        Área Administrativa
+    <div className="a-up" style={{ maxWidth: 1280 }}>
+      <style>{ADMIN_CSS}</style>
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 900, color: A.white, margin: 0, letterSpacing: "-0.02em" }}>
+            KYC / Verificação de Identidade
+          </h1>
+          <p style={{ fontSize: 12, color: A.muted, margin: "4px 0 0" }}>
+            Revisão e aprovação de documentos enviados pelos usuários
+          </p>
+        </div>
+        <button
+          onClick={() => loadData(true)}
+          className="a-btn"
+        >
+          <RefreshCw size={11} />
+          Atualizar
+        </button>
       </div>
 
-      <PageHeader
-        title="KYC / Verificação de Identidade"
-        subtitle="Revisão e aprovação de documentos de verificação enviados pelos usuários."
-        right={
-          <Btn
-            size="sm"
-            variant="secondary"
-            icon={<RefreshCw size={14} />}
-            onClick={() => loadData(true)}
-          >
-            Atualizar
-          </Btn>
-        }
-      />
-
-      {/* Stat cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)",
-          gap: 12,
-          marginBottom: 18,
-        }}
-      >
-        <StatCard
-          icon={<Clock3 size={15} />}
-          title="Pendentes"
-          value={String(statusCounts.pending)}
-          helper="Aguardando primeira análise"
-          accent={C.warn}
-        />
-        <StatCard
-          icon={<Eye size={15} />}
-          title="Em análise"
-          value={String(statusCounts.under_review)}
-          helper="Em revisão pelo backoffice"
-          accent="#818CF8"
-        />
-        <StatCard
-          icon={<CheckCircle2 size={15} />}
-          title="Aprovados"
-          value={String(statusCounts.approved)}
-          helper="Identidade verificada"
-          accent={C.green}
-        />
-        <StatCard
-          icon={<ShieldAlert size={15} />}
-          title="Total KYC"
-          value={String(statusCounts.all)}
-          helper={`${statusCounts.rejected} rejeitados`}
-          accent={C.gold}
-        />
-      </div>
+      {/* Metric Rail */}
+      <ARail>
+        <ARailCell label="Pendentes"   value={statusCounts.pending}      sub="Aguardando análise"       accent={A.amber} />
+        <ARailCell label="Em análise"  value={statusCounts.under_review}  sub="Em revisão pelo backoffice" accent="#818CF8" />
+        <ARailCell label="Aprovados"   value={statusCounts.approved}      sub="Identidade verificada"    accent={A.green} />
+        <ARailCell label="Total KYC"   value={statusCounts.all}           sub={`${statusCounts.rejected} rejeitados`} accent={A.gold} />
+      </ARail>
 
       {/* Feedback banner */}
       {feedback && (

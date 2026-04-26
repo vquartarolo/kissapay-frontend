@@ -33,6 +33,7 @@ import {
   getAdminProviders,
   updateAdminAccountRouting,
 } from "../../services/admin.service";
+import { A, ADMIN_CSS, ARail, ARailCell } from "../../components/admin/AdminDS";
 
 function fmtBRL(v = 0) {
   return Number(v || 0).toLocaleString("pt-BR", {
@@ -802,87 +803,36 @@ export default function AdminManagePage({ isMobile }) {
   const selectedOnlinePreset = getOnlinePreset(selected?.onlineStatus);
 
   return (
-    <div>
-      <div
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 7,
-          padding: "6px 12px",
-          borderRadius: 999,
-          marginBottom: 14,
-          border: "1px solid rgba(45,134,89,0.20)",
-          background: "rgba(45,134,89,0.07)",
-          color: C.green,
-          fontSize: 11,
-          fontWeight: 800,
-          letterSpacing: "0.06em",
-          textTransform: "uppercase",
-        }}
-      >
-        <Shield size={12} />
-        Área Administrativa
+    <div className="a-up" style={{ maxWidth: 1280 }}>
+      <style>{ADMIN_CSS}</style>
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 900, color: A.white, margin: 0, letterSpacing: "-0.02em" }}>
+            Gerenciar contas
+          </h1>
+          <p style={{ fontSize: 12, color: A.muted, margin: "4px 0 0" }}>
+            Central de contas · bloqueio, taxas, adquirentes, documentos e transações
+          </p>
+        </div>
+        <button
+          onClick={() => loadAccounts(pagination.page || 1, true)}
+          className="a-btn"
+        >
+          <RefreshCw size={11} />
+          Atualizar
+        </button>
       </div>
 
-      <PageHeader
-        title="Gerenciar"
-        subtitle="Central premium de contas com bloqueio, taxa PIX/Cripto, adquirentes, documentos e transações."
-        right={
-          <Btn
-            size="sm"
-            variant="secondary"
-            icon={<RefreshCw size={14} />}
-            onClick={() => loadAccounts(pagination.page || 1, true)}
-          >
-            Atualizar
-          </Btn>
-        }
-      />
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)",
-          gap: 12,
-          marginBottom: 18,
-        }}
-      >
-        <MetricCard
-          icon={<UserCog size={15} />}
-          title="Contas listadas"
-          value={String(rows.length)}
-          helper="Total na página atual"
-          accent={C.green}
-        />
-        <MetricCard
-          icon={<CircleDot size={15} />}
-          title="Online"
-          value={String(onlineCount)}
-          helper="Atividade recente detectada"
-          accent={C.green}
-        />
-        <MetricCard
-          icon={<Ban size={15} />}
-          title="Bloqueadas"
-          value={String(blockedCount)}
-          helper="Contas com status bloqueado"
-          accent={C.error}
-        />
-        <MetricCard
-          icon={<WalletCards size={15} />}
-          title="Saldo em conta"
-          value={`R$ ${fmtBRL(totalAvailable)}`}
-          helper="Soma dos saldos na página"
-          accent={C.gold}
-        />
-        <MetricCard
-          icon={<Percent size={15} />}
-          title="Volume processado"
-          value={`R$ ${fmtBRL(totalVolume)}`}
-          helper="Transações aprovadas"
-          accent={C.green}
-        />
-      </div>
+      {/* Metric Rail */}
+      <ARail>
+        <ARailCell label="Contas listadas"    value={rows.length}                   sub="Página atual"                accent={A.green} />
+        <ARailCell label="Online"             value={onlineCount}                   sub="Atividade recente"           accent={A.green} />
+        <ARailCell label="Bloqueadas"         value={blockedCount}                  sub="Status bloqueado"            accent={blockedCount > 0 ? A.red : A.muted} />
+        <ARailCell label="Saldo em conta"     value={`R$ ${fmtBRL(totalAvailable)}`} sub="Soma dos saldos"           accent={A.gold} />
+        <ARailCell label="Volume processado"  value={`R$ ${fmtBRL(totalVolume)}`}  sub="Transações aprovadas"        accent={A.green} />
+      </ARail>
 
       {feedback ? (
         <div

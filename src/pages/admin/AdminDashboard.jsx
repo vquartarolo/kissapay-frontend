@@ -10,9 +10,9 @@ import {
   Wallet, Receipt, Users, ArrowRightLeft, Percent,
   AlertTriangle, ShieldOff, Clock, Ban,
   ShieldCheck, ArrowDownToLine, GitPullRequestArrow, ShieldAlert,
-  Activity,
+  Activity, CheckCircle2, Circle,
 } from "lucide-react";
-import C from "../../constants/colors";
+import { A, ADMIN_CSS } from "../../components/admin/AdminDS";
 import {
   getDashboardOverview, getDashboardVolumeSeries,
   getDashboardRevenueSeries, getDashboardTopSellers,
@@ -20,171 +20,7 @@ import {
   listApprovals, getSecurityStats,
 } from "../../services/admin.service";
 
-/* ── TOKENS ──────────────────────────────────────────────────── */
-const P = {
-  green:        "#2D8659",
-  greenBright:  "#34A065",
-  greenDeep:    "#1A4A30",
-  gold:         "#C9991F",
-  goldBright:   "#E8B340",
-  blue:         "#3B82F6",
-  purple:       "#8B5CF6",
-  amber:        "#F59E0B",
-  red:          "#EF4444",
-  card:         "#141417",
-  cardSoft:     "#1C1C21",
-  cardDeep:     "#0F0F12",
-  border:       "rgba(255,255,255,0.07)",
-  borderMed:    "rgba(255,255,255,0.12)",
-  borderStrong: "rgba(255,255,255,0.18)",
-  muted:        "#5A6A7E",
-  dim:          "#2D3A48",
-  white:        "#FFFFFF",
-  bg:           "#09090B",
-};
-
-/* ── STYLES ──────────────────────────────────────────────────── */
-const STYLES = `
-  @keyframes d-up {
-    from { opacity:0; transform:translateY(12px); }
-    to   { opacity:1; transform:translateY(0); }
-  }
-  @keyframes d-spin { to { transform:rotate(360deg); } }
-  @keyframes d-pulse {
-    0%,100% { opacity:1; }
-    50%     { opacity:0.28; }
-  }
-  @keyframes d-skel {
-    0%   { background-position:-400% 0; }
-    100% { background-position: 400% 0; }
-  }
-
-  .d-up   { animation:d-up 0.35s cubic-bezier(.16,1,.3,1) both; }
-  .d-spin { animation:d-spin 0.75s linear infinite; }
-  .d-live { animation:d-pulse 2.2s ease-in-out infinite; }
-
-  /* KPI strip card */
-  .d-strip-card {
-    flex: 0 0 auto;
-    width: 176px;
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 16px;
-    padding: 16px 18px 15px;
-    transition: transform 0.20s cubic-bezier(.22,.68,0,1.2), box-shadow 0.20s, border-color 0.20s;
-    cursor: default;
-    position: relative;
-    overflow: hidden;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset;
-  }
-  .d-strip-card:hover {
-    transform: translateY(-2px) scale(1.02);
-    border-color: var(--sc-border, rgba(255,255,255,0.11));
-    box-shadow: 0 12px 36px rgba(0,0,0,0.40), var(--sc-glow, 0 0 0 transparent), 0 1px 0 rgba(255,255,255,0.05) inset;
-  }
-
-  /* Chart panel */
-  .d-chart-panel {
-    background: rgba(11,11,14,0.94);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 20px;
-    padding: 24px 24px 20px;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 32px rgba(0,0,0,0.30);
-  }
-
-  /* Section panel */
-  .d-panel {
-    background: rgba(11,11,14,0.94);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 18px;
-    padding: 22px 22px 18px;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset;
-  }
-
-  /* Seller row */
-  .d-seller-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 11px 14px;
-    border-radius: 13px;
-    border: 1px solid rgba(255,255,255,0.05);
-    background: rgba(22,22,28,0.65);
-    transition: border-color 0.15s, transform 0.15s, background 0.15s;
-  }
-  .d-seller-row:hover {
-    border-color: rgba(255,255,255,0.10);
-    transform: translateX(2px);
-    background: rgba(45,134,89,0.06);
-  }
-
-  /* Attention row */
-  .d-attn-row {
-    padding: 10px 13px;
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.05);
-    background: rgba(22,22,28,0.65);
-    transition: border-color 0.15s, background 0.15s;
-    margin-bottom: 7px;
-  }
-  .d-attn-row:last-child { margin-bottom:0; }
-  .d-attn-row:hover { border-color:rgba(255,255,255,0.10); background:rgba(255,255,255,0.02); }
-
-  /* Period buttons */
-  .d-period-btn {
-    border: 1px solid rgba(255,255,255,0.07);
-    background: transparent;
-    color: #5A6A7E;
-    border-radius: 8px;
-    padding: 5px 11px;
-    font-size: 11px;
-    font-weight: 700;
-    font-family: inherit;
-    cursor: pointer;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
-    letter-spacing: 0.04em;
-  }
-  .d-period-btn.on {
-    border-color: rgba(45,134,89,0.50);
-    background: rgba(45,134,89,0.12);
-    color: #34A065;
-  }
-
-  /* Alert chip */
-  .d-alert-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 10px;
-    border-radius: 8px;
-    font-size: 11px;
-    font-weight: 700;
-    font-family: inherit;
-    cursor: pointer;
-    border: 1px solid transparent;
-    transition: background 0.15s, transform 0.15s;
-  }
-  .d-alert-chip:hover { transform: translateY(-1px); }
-
-  /* Skeleton */
-  .d-skel {
-    background: linear-gradient(90deg, #17171B 25%, #1F1F23 50%, #17171B 75%);
-    background-size: 400% 100%;
-    animation: d-skel 1.8s ease infinite;
-    border-radius: 14px;
-  }
-
-  /* Hide scrollbar on strip */
-  .d-strip-scroll::-webkit-scrollbar { display:none; }
-  .d-strip-scroll { scrollbar-width:none; }
-`;
-
-/* ── HELPERS ─────────────────────────────────────────────────── */
+/* ── helpers ─────────────────────────────────────────────────── */
 function fmtBRL(v = 0) {
   return Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -194,197 +30,159 @@ function fmtK(v = 0) {
   if (n >= 1_000)     return `R$ ${(n / 1_000).toFixed(1)}K`;
   return `R$ ${fmtBRL(n)}`;
 }
-function fmtDate(dateStr) {
-  if (!dateStr) return "—";
-  const d = new Date(dateStr);
-  return isNaN(d) ? "—" : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+function fmtDate(d) {
+  if (!d) return "—";
+  const dt = new Date(d);
+  return isNaN(dt) ? "—" : dt.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 function fmtFull(d) {
   if (!d) return "—";
-  return new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
-function getStatusBadge(status) {
-  if (status === "blocked")  return { label: "Bloqueado", color: P.red,   bg: "rgba(239,68,68,0.12)"  };
-  if (status === "inactive") return { label: "Inativo",   color: P.amber, bg: "rgba(245,158,11,0.12)" };
-  return                            { label: "Ativo",     color: P.green, bg: "rgba(45,134,89,0.12)"  };
+function getStatusBadge(s) {
+  if (s === "blocked")  return { label: "Bloqueado", color: A.red,   bg: "rgba(239,68,68,0.12)"  };
+  if (s === "inactive") return { label: "Inativo",   color: A.amber, bg: "rgba(245,158,11,0.12)" };
+  return                       { label: "Ativo",     color: A.green, bg: "rgba(57,217,138,0.10)" };
 }
 function getAccountStatusLabel(v) {
   const map = { email_pending:"Email pendente", basic_user:"Básico", kyc_pending:"KYC pendente", kyc_under_review:"KYC análise", kyc_approved:"KYC aprovado", kyc_rejected:"KYC rejeitado", seller_active:"Seller ativo", suspended:"Suspenso" };
   return map[v] || v || "—";
 }
 
-/* ── SVG SPARKLINE ───────────────────────────────────────────── */
-function Sparkline({ data, color = P.green, width = 180, height = 64 }) {
-  if (!data || data.length < 2) return null;
-  const vals = data.map(d => d.volume ?? d.revenue ?? 0);
-  const max  = Math.max(...vals) || 1;
-  const min  = Math.min(...vals);
-  const rng  = max - min || 1;
-  const pts  = vals.map((v, i) => ({
-    x: (i / (vals.length - 1)) * width,
-    y: (1 - (v - min) / rng) * (height - 4) + 2,
-  }));
-  const linePath = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
-  const areaPath = `${linePath}L${width},${height}L0,${height}Z`;
-  return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} fill="none" aria-hidden>
-      <defs>
-        <linearGradient id="spk" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor={color} stopOpacity={0.35} />
-          <stop offset="100%" stopColor={color} stopOpacity={0}    />
-        </linearGradient>
-      </defs>
-      <path d={areaPath} fill="url(#spk)" />
-      <path d={linePath} stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
+/* ── scoped CSS (extends AdminDS) ────────────────────────────── */
+const STYLES = `${ADMIN_CSS}
+  .dash-seller { display:flex; align-items:center; gap:12px; padding:11px 16px; border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.12s; }
+  .dash-seller:last-child { border-bottom:none; }
+  .dash-seller:hover { background:rgba(57,217,138,0.04); }
+  .dash-attn  { padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.12s; }
+  .dash-attn:last-child { border-bottom:none; }
+  .dash-attn:hover { background:rgba(255,255,255,0.02); }
+  .dash-period { border:1px solid rgba(255,255,255,0.07); background:transparent; color:#5C6E82; border-radius:7px; padding:5px 11px; font-size:11px; font-weight:700; font-family:inherit; cursor:pointer; transition:all 0.14s; letter-spacing:0.04em; }
+  .dash-period.on { border-color:rgba(57,217,138,0.45); background:rgba(57,217,138,0.10); color:#39D98A; }
+  .dash-alert-chip { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:8px; font-size:11px; font-weight:700; font-family:inherit; cursor:pointer; border:1px solid transparent; transition:background 0.14s; }
+  .dash-alert-chip:hover { filter:brightness(1.15); }
+`;
 
-/* ── CHART TOOLTIP ───────────────────────────────────────────── */
-function ChartTooltip({ active, payload, label, color = P.green }) {
+/* ── Tooltip ──────────────────────────────────────────────────── */
+function ChartTip({ active, payload, label, color = A.green }) {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: "#1A1A1E", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: "10px 14px", boxShadow: "0 8px 32px rgba(0,0,0,0.55)" }}>
-      <div style={{ fontSize: 10, color: P.muted, marginBottom: 5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</div>
-      {payload.map((p, i) => (
-        <div key={i} style={{ fontSize: 15, fontWeight: 900, color, fontVariantNumeric: "tabular-nums" }}>
-          R$ {fmtBRL(p.value)}
-        </div>
-      ))}
+    <div style={{ background: "#18191D", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: "9px 13px", boxShadow: "0 8px 32px rgba(0,0,0,0.55)" }}>
+      <div style={{ fontSize: 10, color: A.muted, marginBottom: 4, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</div>
+      <div style={{ fontSize: 15, fontWeight: 900, color, fontVariantNumeric: "tabular-nums" }}>R$ {fmtBRL(payload[0].value)}</div>
     </div>
   );
 }
 
-/* ── SKELETON ────────────────────────────────────────────────── */
-function Skel({ w = "100%", h = 90, r = 16, style = {} }) {
-  return <div className="d-skel" style={{ width: w, height: h, borderRadius: r, flexShrink: 0, ...style }} />;
+/* ── Skeleton ─────────────────────────────────────────────────── */
+function Skel({ h, r = 12, style = {} }) {
+  return <div className="a-skel" style={{ height: h, borderRadius: r, ...style }} />;
 }
 function SkeletonDash({ isMobile }) {
   return (
     <div>
-      <Skel h={isMobile ? 220 : 290} r={22} style={{ marginBottom: 20 }} />
-      <div style={{ display: "flex", gap: 10, marginBottom: 20, overflow: "hidden" }}>
-        {[...Array(5)].map((_, i) => <Skel key={i} h={112} w={176} r={16} style={{ flexShrink: 0 }} />)}
-      </div>
-      <Skel h={isMobile ? 200 : 300} r={20} style={{ marginBottom: 14 }} />
+      <Skel h={isMobile ? 210 : 270} r={20} style={{ marginBottom: 20 }} />
+      <Skel h={72} r={14} style={{ marginBottom: 20 }} />
+      <Skel h={isMobile ? 180 : 280} r={18} style={{ marginBottom: 14 }} />
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.5fr 1fr", gap: 14 }}>
-        <Skel h={260} />
-        <Skel h={260} />
+        <Skel h={240} />
+        <Skel h={240} />
       </div>
     </div>
   );
 }
 
-/* ── SECTION HEADER ──────────────────────────────────────────── */
-function SH({ title, sub }) {
-  return (
-    <div style={{ marginBottom: 18 }}>
-      <div style={{ fontSize: 13, fontWeight: 800, color: P.white, letterSpacing: "-0.01em", marginBottom: 3 }}>{title}</div>
-      {sub && <div style={{ fontSize: 11, color: P.muted }}>{sub}</div>}
-    </div>
-  );
+/* ── xTick helper ─────────────────────────────────────────────── */
+function xTick(val, labels) {
+  const idx  = labels.indexOf(val);
+  const step = labels.length > 60 ? 14 : labels.length > 30 ? 7 : labels.length > 14 ? 3 : 1;
+  return idx % step === 0 ? val : "";
 }
 
 /* ══════════════════════════════════════════════════════════════
-   HERO SECTION
+   HERO
 ══════════════════════════════════════════════════════════════ */
-function HeroSection({ overview, volSeries, period, setPeriod, loading, onRefresh, refreshedAt, attnTotal, isMobile }) {
+function Hero({ overview, volSeries, period, setPeriod, loading, onRefresh, refreshedAt, attnTotal, isMobile }) {
   const volume = overview?.volumeTotal ?? 0;
   const delta  = overview?.deltas?.volume;
   const up     = delta > 0;
-  const hasD   = delta != null;
 
   return (
     <div
-      className="d-up"
-      style={{
-        position: "relative",
-        overflow: "hidden",
-        borderRadius: 22,
-        marginBottom: 20,
-        minHeight: isMobile ? 220 : 290,
-        background: "linear-gradient(155deg, #060E0A 0%, #08090D 45%, #060608 100%)",
-        border: "1px solid rgba(45,134,89,0.16)",
-        boxShadow: "0 0 0 1px rgba(45,134,89,0.05) inset, 0 24px 80px rgba(0,0,0,0.65)",
-      }}
+      className="a-hero a-up"
+      style={{ minHeight: isMobile ? 210 : 268 }}
     >
-      {/* Dot-grid texture */}
-      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.15, backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.16) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
-      {/* Primary green radial glow */}
-      <div style={{ position: "absolute", top: -100, left: -100, width: 460, height: 460, borderRadius: "50%", background: "radial-gradient(circle, rgba(45,134,89,0.22) 0%, transparent 65%)", pointerEvents: "none" }} />
-      {/* Ambient center glow */}
-      <div style={{ position: "absolute", top: "20%", left: "22%", width: 340, height: 340, borderRadius: "50%", background: "radial-gradient(circle, rgba(45,134,89,0.09) 0%, transparent 70%)", pointerEvents: "none", filter: "blur(36px)" }} />
-      {/* Gold accent glow bottom-right */}
-      <div style={{ position: "absolute", bottom: -50, right: 0, width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(201,153,31,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
-
-      {/* Embedded area chart — right half */}
+      {/* dot-grid */}
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.14, backgroundImage: "radial-gradient(rgba(255,255,255,0.16) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
+      {/* green glow */}
+      <div style={{ position: "absolute", top: -80, left: -80, width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(57,217,138,0.18) 0%, transparent 65%)", pointerEvents: "none" }} />
+      {/* chart ghost */}
       {!isMobile && volSeries.length > 0 && (
-        <div style={{ position: "absolute", right: 0, bottom: 0, top: 0, width: "48%", pointerEvents: "none", opacity: 0.20, filter: "drop-shadow(0 0 20px rgba(45,134,89,0.60))" }}>
+        <div style={{ position: "absolute", right: 0, bottom: 0, top: 0, width: "46%", pointerEvents: "none", opacity: 0.18, filter: "drop-shadow(0 0 18px rgba(57,217,138,0.55))" }}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={volSeries} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
               <defs>
-                <linearGradient id="hGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%"   stopColor={P.green} stopOpacity={0.55} />
-                  <stop offset="100%" stopColor={P.green} stopOpacity={0}    />
+                <linearGradient id="hg" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={A.green} stopOpacity={0.55} />
+                  <stop offset="100%" stopColor={A.green} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <Area type="monotone" dataKey="volume" stroke={P.greenBright} strokeWidth={2.5} fill="url(#hGrad)" dot={false} />
+              <Area type="monotone" dataKey="volume" stroke={A.green} strokeWidth={2.5} fill="url(#hg)" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       )}
 
-      {/* Content */}
-      <div style={{ position: "relative", zIndex: 1, padding: isMobile ? "22px 20px" : "28px 32px", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "inherit" }}>
-        {/* Top bar */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 36 }}>
+      <div style={{ position: "relative", zIndex: 1, padding: isMobile ? "22px 20px" : "26px 32px", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "inherit" }}>
+        {/* top bar */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 30 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, background: "rgba(45,134,89,0.12)", border: "1px solid rgba(45,134,89,0.26)", color: P.greenBright, fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              <span className="d-live" style={{ width: 5, height: 5, borderRadius: "50%", background: P.greenBright }} />
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, background: "rgba(57,217,138,0.10)", border: "1px solid rgba(57,217,138,0.24)", color: A.green, fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              <span className="a-live" style={{ width: 5, height: 5, borderRadius: "50%", background: A.green }} />
               Operacional
             </span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 999, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: P.muted, fontSize: 10, fontWeight: 600 }}>
-              <Activity size={9} />
-              OrionPay Admin
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 999, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: A.muted, fontSize: 10, fontWeight: 600 }}>
+              <Activity size={9} /> OrionPay Admin
             </span>
+            {attnTotal > 0 && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 999, background: "rgba(239,68,68,0.09)", border: "1px solid rgba(239,68,68,0.22)", color: A.red, fontSize: 10, fontWeight: 700 }}>
+                <AlertTriangle size={9} /> {attnTotal} pendência{attnTotal > 1 ? "s" : ""}
+              </span>
+            )}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             {[7, 30, 90].map(d => (
-              <button key={d} className={`d-period-btn${period === d ? " on" : ""}`} onClick={() => setPeriod(d)}>{d}d</button>
+              <button key={d} className={`dash-period${period === d ? " on" : ""}`} onClick={() => setPeriod(d)}>{d}d</button>
             ))}
-            <button
-              onClick={onRefresh}
-              disabled={loading}
-              style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "5px 11px", cursor: loading ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: P.muted, fontFamily: "inherit", opacity: loading ? 0.5 : 1 }}
-            >
-              <RefreshCw size={11} className={loading ? "d-spin" : ""} />
+            <button onClick={onRefresh} disabled={loading} className="a-btn" style={{ opacity: loading ? 0.5 : 1 }}>
+              <RefreshCw size={11} className={loading ? "a-spin" : ""} />
               {loading ? "..." : "Atualizar"}
             </button>
           </div>
         </div>
 
-        {/* Main metric */}
+        {/* main metric */}
         <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: P.dim, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: A.dim, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 10 }}>
             Volume processado · {period} dias
           </div>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 16, flexWrap: "wrap", marginBottom: 18 }}>
-            <div style={{ fontSize: isMobile ? 46 : 68, fontWeight: 900, color: P.white, letterSpacing: "-0.05em", lineHeight: 1, fontVariantNumeric: "tabular-nums", textShadow: "0 0 60px rgba(45,134,89,0.38)" }}>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 14, flexWrap: "wrap", marginBottom: 16 }}>
+            <div style={{ fontSize: isMobile ? 44 : 64, fontWeight: 900, color: A.white, letterSpacing: "-0.05em", lineHeight: 1, fontVariantNumeric: "tabular-nums", textShadow: "0 0 60px rgba(57,217,138,0.30)" }}>
               {loading ? "—" : `R$ ${fmtBRL(volume)}`}
             </div>
-            {hasD && !loading && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 10, fontSize: 13, fontWeight: 800, background: up ? "rgba(45,134,89,0.16)" : "rgba(239,68,68,0.14)", color: up ? P.greenBright : P.red, border: `1px solid ${up ? "rgba(45,134,89,0.30)" : "rgba(239,68,68,0.28)"}`, marginBottom: 4 }}>
+            {delta != null && !loading && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 10, fontSize: 13, fontWeight: 800, background: up ? "rgba(57,217,138,0.14)" : "rgba(239,68,68,0.12)", color: up ? A.green : A.red, border: `1px solid ${up ? "rgba(57,217,138,0.28)" : "rgba(239,68,68,0.26)"}`, marginBottom: 4 }}>
                 {up ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                 {Math.abs(delta)}%
               </span>
             )}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span className="d-live" style={{ width: 4, height: 4, borderRadius: "50%", background: P.greenBright }} />
-              <span style={{ fontSize: 11, color: P.greenBright, fontWeight: 600 }}>Todos os sistemas ativos</span>
+              <span className="a-live" style={{ width: 4, height: 4, borderRadius: "50%", background: A.green }} />
+              <span style={{ fontSize: 11, color: A.green, fontWeight: 600 }}>Todos os sistemas ativos</span>
             </div>
-            {refreshedAt && <span style={{ fontSize: 10, color: P.dim }}>· {fmtFull(refreshedAt)}</span>}
+            {refreshedAt && <span style={{ fontSize: 10, color: A.dim }}>· {fmtFull(refreshedAt)}</span>}
           </div>
         </div>
       </div>
@@ -393,99 +191,71 @@ function HeroSection({ overview, volSeries, period, setPeriod, loading, onRefres
 }
 
 /* ══════════════════════════════════════════════════════════════
-   ALERT BANNER
+   ALERT BAR
 ══════════════════════════════════════════════════════════════ */
-function AlertBanner({ opCounts, attention, opLoading, nav }) {
+function AlertBar({ opCounts, attention, opLoading, nav }) {
   if (opLoading) return null;
+  const chips = [];
+  if (opCounts.security > 0)        chips.push({ c: A.red,   icon: <ShieldAlert size={11} />, label: `${opCounts.security} alerta SOC`,                   href: "/admin/security"    });
+  if (attention.blocked.length > 0) chips.push({ c: A.red,   icon: <Ban size={11} />,         label: `${attention.blocked.length} conta bloqueada`,         href: "/admin/sellers"     });
+  if (opCounts.kyc > 0)             chips.push({ c: A.amber, icon: <Clock size={11} />,        label: `${opCounts.kyc} KYC pendente`,                       href: "/admin/kyc"         });
+  if (opCounts.withdrawals > 0)     chips.push({ c: A.amber, icon: <ArrowDownToLine size={11} />, label: `${opCounts.withdrawals} saque pendente`,          href: "/admin/withdrawals" });
+  if (opCounts.approvals > 0)       chips.push({ c: A.blue,  icon: <GitPullRequestArrow size={11} />, label: `${opCounts.approvals} aprovação`,             href: "/admin/approvals"   });
+  if (attention.noTwoFA.length > 0) chips.push({ c: A.muted, icon: <ShieldOff size={11} />,   label: `${attention.noTwoFA.length} sem 2FA`,                 href: "/admin/sellers"     });
+  if (chips.length === 0) return null;
 
-  const alerts = [];
-  if (opCounts.security > 0)        alerts.push({ level: "red",   icon: <ShieldAlert size={12} />,        label: `${opCounts.security} alerta${opCounts.security > 1 ? "s" : ""} SOC`,                                                           href: "/admin/security"    });
-  if (attention.blocked.length > 0) alerts.push({ level: "red",   icon: <Ban size={12} />,                label: `${attention.blocked.length} bloqueada${attention.blocked.length > 1 ? "s" : ""}`,                                               href: "/admin/sellers"     });
-  if (opCounts.kyc > 0)             alerts.push({ level: "amber", icon: <Clock size={12} />,              label: `${opCounts.kyc} KYC pendente${opCounts.kyc > 1 ? "s" : ""}`,                                                                    href: "/admin/kyc"         });
-  if (opCounts.withdrawals > 0)     alerts.push({ level: "amber", icon: <ArrowDownToLine size={12} />,    label: `${opCounts.withdrawals} saque${opCounts.withdrawals > 1 ? "s" : ""} pendente${opCounts.withdrawals > 1 ? "s" : ""}`,             href: "/admin/withdrawals" });
-  if (opCounts.approvals > 0)       alerts.push({ level: "blue",  icon: <GitPullRequestArrow size={12} />,label: `${opCounts.approvals} aprovação${opCounts.approvals > 1 ? "ões" : ""}`,                                                         href: "/admin/approvals"   });
-  if (attention.noTwoFA.length > 0) alerts.push({ level: "muted", icon: <ShieldOff size={12} />,          label: `${attention.noTwoFA.length} sem 2FA`,                                                                                            href: "/admin/sellers"     });
-
-  if (alerts.length === 0) return null;
-
-  const hasRed  = alerts.some(a => a.level === "red");
-  const accent  = hasRed ? P.red : P.amber;
-  const chipC   = { red: P.red, amber: P.amber, blue: P.blue, muted: P.muted };
-
+  const hasRed = chips.some(ch => ch.c === A.red);
+  const accent = hasRed ? A.red : A.amber;
   return (
-    <div className="d-up" style={{ marginBottom: 16, borderRadius: 14, padding: "12px 16px 12px 20px", background: hasRed ? "rgba(239,68,68,0.05)" : "rgba(245,158,11,0.05)", border: `1px solid ${hasRed ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.18)"}`, borderLeft: `3px solid ${accent}`, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+    <div className="a-up" style={{ marginBottom: 20, padding: "11px 16px 11px 20px", borderRadius: 12, background: hasRed ? "rgba(239,68,68,0.04)" : "rgba(245,158,11,0.04)", border: `1px solid ${hasRed ? "rgba(239,68,68,0.16)" : "rgba(245,158,11,0.16)"}`, borderLeft: `3px solid ${accent}`, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", animationDelay: "30ms" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-        <AlertTriangle size={12} color={accent} />
+        <AlertTriangle size={11} color={accent} />
         <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.10em", color: accent }}>
           {hasRed ? "Atenção necessária" : "Pendências"}
         </span>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-        {alerts.map((a, i) => {
-          const c = chipC[a.level];
-          return (
-            <button key={i} className="d-alert-chip" onClick={() => nav(a.href)} style={{ background: `${c}16`, borderColor: `${c}2A`, color: c }}>
-              {a.icon}
-              {a.label}
-            </button>
-          );
-        })}
+      <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+        {chips.map((ch, i) => (
+          <button key={i} className="dash-alert-chip" onClick={() => nav(ch.href)} style={{ background: `${ch.c}14`, borderColor: `${ch.c}28`, color: ch.c }}>
+            {ch.icon} {ch.label}
+          </button>
+        ))}
       </div>
     </div>
   );
 }
 
 /* ══════════════════════════════════════════════════════════════
-   KPI STRIP
+   METRIC RAIL
 ══════════════════════════════════════════════════════════════ */
-function KpiStrip({ overview, period }) {
+function MetricRail({ overview, isMobile }) {
   if (!overview) return null;
-
-  const taxaMedia = overview.revenueTotal && overview.volumeTotal
+  const taxa = overview.revenueTotal && overview.volumeTotal
     ? `${((overview.revenueTotal / overview.volumeTotal) * 100).toFixed(2)}%`
     : "—";
 
-  const items = [
-    { icon: <Percent size={13} />,        label: "Receita",        value: `R$ ${fmtBRL(overview.revenueTotal)}`,      delta: overview.deltas?.revenue,      accent: P.gold   },
-    { icon: <ArrowRightLeft size={13} />, label: "Transações",     value: String(overview.transactionsTotal ?? 0),    delta: overview.deltas?.transactions, accent: P.blue   },
-    { icon: <Users size={13} />,          label: "Sellers ativos", value: String(overview.activeSellers ?? 0),        delta: null, sub: `de ${overview.totalSellers ?? 0} total`, accent: P.purple },
-    { icon: <Receipt size={13} />,        label: "Ticket médio",   value: `R$ ${fmtBRL(overview.ticketAverage)}`,     delta: null,                          accent: P.green  },
-    { icon: <Wallet size={13} />,         label: "Taxa média",     value: taxaMedia,                                   delta: null,                          accent: P.goldBright },
+  const cells = [
+    { label: "Receita em taxas",  value: `R$ ${fmtBRL(overview.revenueTotal)}`,      delta: overview.deltas?.revenue,      accent: A.gold   },
+    { label: "Transações",        value: String(overview.transactionsTotal ?? 0),     delta: overview.deltas?.transactions, accent: A.blue   },
+    { label: "Sellers ativos",    value: String(overview.activeSellers ?? 0),         delta: null, sub: `de ${overview.totalSellers ?? 0} total`, accent: A.purple },
+    { label: "Ticket médio",      value: `R$ ${fmtBRL(overview.ticketAverage)}`,      delta: null,                          accent: A.green  },
+    { label: "Taxa média",        value: taxa,                                         delta: null,                          accent: A.gold   },
   ];
 
   return (
-    <div className="d-strip-scroll d-up" style={{ display: "flex", gap: 10, overflowX: "auto", marginBottom: 20, paddingBottom: 2, animationDelay: "50ms" }}>
-      {items.map((item, i) => {
-        const up  = item.delta > 0;
-        const hasD = typeof item.delta === "number";
+    <div className="a-rail a-up" style={{ marginBottom: 20, animationDelay: "40ms", flexWrap: isMobile ? "wrap" : "nowrap" }}>
+      {cells.map((cell, i) => {
+        const up = cell.delta > 0;
         return (
-          <div
-            key={item.label}
-            className="d-strip-card d-up"
-            style={{
-              animationDelay: `${60 + i * 45}ms`,
-              background: `linear-gradient(148deg, ${item.accent}0D 0%, rgba(12,12,16,0.88) 55%)`,
-              "--sc-border": `${item.accent}3A`,
-              "--sc-glow":   `0 0 26px ${item.accent}20`,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <div style={{ width: 30, height: 30, borderRadius: 9, background: `${item.accent}18`, border: `1px solid ${item.accent}28`, display: "flex", alignItems: "center", justifyContent: "center", color: item.accent, boxShadow: `0 0 14px ${item.accent}40` }}>
-                {item.icon}
-              </div>
-              {hasD && (
-                <span style={{ fontSize: 10, fontWeight: 800, color: up ? P.greenBright : P.red, letterSpacing: "0.02em" }}>
-                  {up ? "▲" : "▼"} {Math.abs(item.delta)}%
-                </span>
+          <div key={cell.label} className="a-rail-cell" style={isMobile ? { minWidth: "45%", borderBottom: i < cells.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" } : {}}>
+            <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.11em", textTransform: "uppercase", color: A.dim, marginBottom: 6 }}>{cell.label}</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
+              <span style={{ fontSize: 20, fontWeight: 900, color: A.white, letterSpacing: "-0.04em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{cell.value}</span>
+              {typeof cell.delta === "number" && (
+                <span style={{ fontSize: 10, fontWeight: 800, color: up ? A.green : A.red }}>{up ? "▲" : "▼"} {Math.abs(cell.delta)}%</span>
               )}
             </div>
-            <div style={{ fontSize: 21, fontWeight: 900, color: P.white, letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 4, fontVariantNumeric: "tabular-nums" }}>
-              {item.value}
-            </div>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: P.dim }}>
-              {item.label}
-            </div>
-            {item.sub && <div style={{ fontSize: 10, color: P.muted, marginTop: 2 }}>{item.sub}</div>}
+            {cell.sub && <div style={{ fontSize: 10, color: A.muted, marginTop: 2 }}>{cell.sub}</div>}
           </div>
         );
       })}
@@ -521,11 +291,10 @@ export default function AdminDashboard({ isMobile }) {
     return 0;
   }
 
-  const load = useCallback(async (p = period, showSkeleton = true) => {
+  const load = useCallback(async (p = period, showSkel = true) => {
     try {
-      if (showSkeleton) setLoading(true);
+      if (showSkel) setLoading(true);
       setError("");
-
       const [ov, vol, rev, top, attn, opRes] = await Promise.all([
         getDashboardOverview(p),
         getDashboardVolumeSeries(p),
@@ -538,19 +307,16 @@ export default function AdminDashboard({ isMobile }) {
           getSecurityStats(),
         ]),
       ]);
-
       setOverview(ov);
-      setVolSeries(Array.isArray(vol?.series)  ? vol.series  : []);
-      setRevSeries(Array.isArray(rev?.series)  ? rev.series  : []);
-      setTopSellers(Array.isArray(top?.items)  ? top.items   : []);
-
+      setVolSeries(Array.isArray(vol?.series) ? vol.series : []);
+      setRevSeries(Array.isArray(rev?.series) ? rev.series : []);
+      setTopSellers(Array.isArray(top?.items) ? top.items  : []);
       const attnData = {
         blocked:    Array.isArray(attn?.blocked)    ? attn.blocked    : [],
         kycPending: Array.isArray(attn?.kycPending) ? attn.kycPending : [],
         noTwoFA:    Array.isArray(attn?.noTwoFA)    ? attn.noTwoFA    : [],
       };
       setAttention(attnData);
-
       const [cashR, apprR, secR] = opRes;
       setOpCounts({
         kyc:         attnData.kycPending.length,
@@ -561,33 +327,27 @@ export default function AdminDashboard({ isMobile }) {
       setOpLoading(false);
       setRefreshedAt(new Date());
     } catch (err) {
-      console.error("Dashboard error:", err);
-      setError("Erro ao carregar dados do dashboard. Tente novamente.");
+      console.error(err);
+      setError("Erro ao carregar dados do dashboard.");
     } finally {
-      if (showSkeleton) setLoading(false);
+      if (showSkel) setLoading(false);
     }
   }, [period]);
 
   useEffect(() => { document.title = "Dashboard • OrionPay"; load(period); }, [period]);
 
   const attnTotal  = attention.blocked.length + attention.kycPending.length + attention.noTwoFA.length;
-  const mainChartH = isMobile ? 200 : 300;
-  const secChartH  = isMobile ? 180 : 234;
+  const mainH      = isMobile ? 200 : 290;
+  const secH       = isMobile ? 170 : 224;
   const volLabels  = volSeries.map(d => fmtDate(d.date));
   const revLabels  = revSeries.map(d => fmtDate(d.date));
 
-  function xTick(val, series) {
-    const idx  = series.indexOf(val);
-    const step = series.length > 60 ? 14 : series.length > 30 ? 7 : series.length > 14 ? 3 : 1;
-    return idx % step === 0 ? val : "";
-  }
-
   return (
-    <div>
+    <div style={{ maxWidth: 1280, paddingBottom: 48 }}>
       <style>{STYLES}</style>
 
-      {/* ══ 1. HERO ══════════════════════════════════════════════ */}
-      <HeroSection
+      {/* 1. HERO */}
+      <Hero
         overview={overview}
         volSeries={volSeries}
         period={period}
@@ -599,11 +359,10 @@ export default function AdminDashboard({ isMobile }) {
         isMobile={isMobile}
       />
 
-      {/* ══ ERROR ════════════════════════════════════════════════ */}
+      {/* error */}
       {error && (
-        <div style={{ marginBottom: 14, borderRadius: 14, padding: "12px 16px", background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.22)", fontSize: 13, color: P.red, display: "flex", alignItems: "center", gap: 8 }}>
-          <AlertTriangle size={15} />
-          {error}
+        <div style={{ marginBottom: 14, padding: "12px 16px", borderRadius: 12, background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.20)", fontSize: 13, color: A.red, display: "flex", alignItems: "center", gap: 8 }}>
+          <AlertTriangle size={14} /> {error}
         </div>
       )}
 
@@ -611,128 +370,132 @@ export default function AdminDashboard({ isMobile }) {
         <SkeletonDash isMobile={isMobile} />
       ) : (
         <>
-          {/* ══ 2. ALERT BANNER ══════════════════════════════════ */}
-          <AlertBanner
-            opCounts={opCounts}
-            attention={attention}
-            opLoading={opLoading}
-            nav={navigate}
-          />
+          {/* 2. ALERT BAR */}
+          <AlertBar opCounts={opCounts} attention={attention} opLoading={opLoading} nav={navigate} />
 
-          {/* ══ 3. KPI STRIP ═════════════════════════════════════ */}
-          <KpiStrip overview={overview} period={period} />
+          {/* 3. METRIC RAIL */}
+          <MetricRail overview={overview} isMobile={isMobile} />
 
-          {/* ══ 4. MAIN CHART — Volume (full width) ══════════════ */}
-          <div className="d-chart-panel d-up" style={{ marginBottom: 14, animationDelay: "100ms" }}>
-            <SH title="Volume por dia" sub={`Transações aprovadas — últimos ${period} dias`} />
+          {/* 4. MAIN CHART — Volume */}
+          <div className="a-panel a-up" style={{ marginBottom: 14, animationDelay: "80ms" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 8 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: A.white, marginBottom: 2 }}>Volume por dia</div>
+                <div style={{ fontSize: 11, color: A.muted }}>Transações aprovadas — últimos {period} dias</div>
+              </div>
+            </div>
             {volSeries.length === 0 ? (
-              <div style={{ padding: "36px 0", textAlign: "center", fontSize: 12, color: P.dim }}>Sem dados no período</div>
+              <div style={{ padding: "36px 0", textAlign: "center", fontSize: 12, color: A.dim }}>Sem dados no período</div>
             ) : (
-              <ResponsiveContainer width="100%" height={mainChartH}>
+              <ResponsiveContainer width="100%" height={mainH}>
                 <AreaChart data={volSeries} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gVol" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor={P.green} stopOpacity={0.32} />
-                      <stop offset="95%" stopColor={P.green} stopOpacity={0}    />
+                      <stop offset="5%"  stopColor={A.green} stopOpacity={0.30} />
+                      <stop offset="95%" stopColor={A.green} stopOpacity={0}    />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                  <XAxis dataKey="date" tickFormatter={v => xTick(fmtDate(v), volLabels)} tick={{ fill: P.dim, fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} />
-                  <YAxis tickFormatter={v => fmtK(v)} tick={{ fill: P.muted, fontSize: 10 }} axisLine={false} tickLine={false} width={62} />
-                  <Tooltip content={<ChartTooltip color={P.greenBright} />} />
-                  <Area type="monotone" dataKey="volume" stroke={P.greenBright} strokeWidth={2.5} fill="url(#gVol)" dot={false} activeDot={{ r: 5, fill: P.greenBright, stroke: "#0A0A0E", strokeWidth: 2 }} />
+                  <XAxis dataKey="date" tickFormatter={v => xTick(fmtDate(v), volLabels)} tick={{ fill: A.dim, fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} />
+                  <YAxis tickFormatter={v => fmtK(v)} tick={{ fill: A.muted, fontSize: 10 }} axisLine={false} tickLine={false} width={62} />
+                  <Tooltip content={<ChartTip color={A.green} />} />
+                  <Area type="monotone" dataKey="volume" stroke={A.green} strokeWidth={2.5} fill="url(#gVol)" dot={false} activeDot={{ r: 5, fill: A.green, stroke: "#0A0A0E", strokeWidth: 2 }} />
                 </AreaChart>
               </ResponsiveContainer>
             )}
           </div>
 
-          {/* ══ 5. SECONDARY ROW — Revenue + Top Sellers ═════════ */}
+          {/* 5. SECONDARY ROW */}
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.5fr 1fr", gap: 14, marginBottom: 14 }}>
             {/* Revenue */}
-            <div className="d-chart-panel d-up" style={{ animationDelay: "140ms" }}>
-              <SH title="Receita diária" sub={`Taxas coletadas — últimos ${period} dias`} />
+            <div className="a-panel a-up" style={{ animationDelay: "120ms" }}>
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: A.white, marginBottom: 2 }}>Receita diária</div>
+                <div style={{ fontSize: 11, color: A.muted }}>Taxas coletadas — últimos {period} dias</div>
+              </div>
               {revSeries.length === 0 ? (
-                <div style={{ padding: "36px 0", textAlign: "center", fontSize: 12, color: P.dim }}>Sem dados no período</div>
+                <div style={{ padding: "36px 0", textAlign: "center", fontSize: 12, color: A.dim }}>Sem dados no período</div>
               ) : (
-                <ResponsiveContainer width="100%" height={secChartH}>
+                <ResponsiveContainer width="100%" height={secH}>
                   <BarChart data={revSeries} margin={{ top: 4, right: 4, left: 0, bottom: 0 }} barSize={period > 30 ? 3 : 6}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                    <XAxis dataKey="date" tickFormatter={v => xTick(fmtDate(v), revLabels)} tick={{ fill: P.dim, fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} />
-                    <YAxis tickFormatter={v => fmtK(v)} tick={{ fill: P.muted, fontSize: 10 }} axisLine={false} tickLine={false} width={62} />
-                    <Tooltip content={<ChartTooltip color={P.goldBright} />} />
-                    <Bar dataKey="revenue" fill={P.gold} radius={[4, 4, 0, 0]} />
+                    <XAxis dataKey="date" tickFormatter={v => xTick(fmtDate(v), revLabels)} tick={{ fill: A.dim, fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis tickFormatter={v => fmtK(v)} tick={{ fill: A.muted, fontSize: 10 }} axisLine={false} tickLine={false} width={62} />
+                    <Tooltip content={<ChartTip color={A.goldBright} />} />
+                    <Bar dataKey="revenue" fill={A.gold} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
             </div>
 
             {/* Top Sellers */}
-            <div className="d-panel d-up" style={{ animationDelay: "160ms" }}>
-              <SH title="Top sellers" sub={`Ranking — últimos ${period} dias`} />
+            <div className="a-panel a-up" style={{ padding: 0, overflow: "hidden", animationDelay: "140ms" }}>
+              <div style={{ padding: "18px 18px 14px" }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: A.white, marginBottom: 2 }}>Top sellers</div>
+                <div style={{ fontSize: 11, color: A.muted }}>Ranking — {period} dias</div>
+              </div>
+              <hr className="a-hr" />
               {topSellers.length === 0 ? (
-                <div style={{ padding: "28px 0", textAlign: "center", fontSize: 12, color: P.dim }}>Nenhuma transação no período</div>
+                <div style={{ padding: "28px 0", textAlign: "center", fontSize: 12, color: A.dim }}>Nenhuma transação</div>
               ) : (
-                <div style={{ display: "grid", gap: 8 }}>
-                  {topSellers.map((s, idx) => {
-                    const badge = getStatusBadge(s.status);
-                    const top3  = idx < 3;
-                    return (
-                      <div key={String(s.userId)} className="d-seller-row">
-                        <div style={{ width: 26, height: 26, borderRadius: 8, flexShrink: 0, background: top3 ? "rgba(45,134,89,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${top3 ? "rgba(45,134,89,0.24)" : "rgba(255,255,255,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: top3 ? P.green : P.dim }}>
-                          {idx + 1}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: P.white, marginBottom: 1 }}>{s.name || "Sem nome"}</div>
-                          <div style={{ fontSize: 10, color: P.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.email}</div>
-                        </div>
-                        <div style={{ textAlign: "right", flexShrink: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 900, color: P.white, fontVariantNumeric: "tabular-nums", marginBottom: 1 }}>R$ {fmtBRL(s.volume)}</div>
-                          <div style={{ fontSize: 10, color: P.dim }}>{s.transactions} txn · R$ {fmtBRL(s.revenue)} fee</div>
-                        </div>
-                        <span style={{ padding: "3px 8px", borderRadius: 999, background: badge.bg, color: badge.color, fontSize: 9, fontWeight: 800, flexShrink: 0, whiteSpace: "nowrap" }}>
-                          {badge.label}
-                        </span>
+                topSellers.map((s, idx) => {
+                  const badge = getStatusBadge(s.status);
+                  const top3  = idx < 3;
+                  return (
+                    <div key={String(s.userId)} className="dash-seller">
+                      <div style={{ width: 26, height: 26, borderRadius: 8, flexShrink: 0, background: top3 ? "rgba(57,217,138,0.10)" : "rgba(255,255,255,0.04)", border: `1px solid ${top3 ? "rgba(57,217,138,0.22)" : "rgba(255,255,255,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: top3 ? A.green : A.dim }}>
+                        {idx + 1}
                       </div>
-                    );
-                  })}
-                </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: A.white, marginBottom: 1 }}>{s.name || "—"}</div>
+                        <div style={{ fontSize: 10, color: A.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.email}</div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: A.white, fontVariantNumeric: "tabular-nums" }}>R$ {fmtBRL(s.volume)}</div>
+                        <div style={{ fontSize: 10, color: A.dim }}>{s.transactions} txn</div>
+                      </div>
+                      <span style={{ padding: "3px 8px", borderRadius: 999, background: badge.bg, color: badge.color, fontSize: 9, fontWeight: 800, flexShrink: 0, whiteSpace: "nowrap" }}>{badge.label}</span>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>
 
-          {/* ══ 6. ATTENTION PANEL — only when needed ════════════ */}
+          {/* 6. ATTENTION */}
           {attnTotal > 0 && (
-            <div className="d-panel d-up" style={{ animationDelay: "180ms" }}>
-              <SH title="Contas — atenção" sub="Ações operacionais recomendadas" />
-              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 20 }}>
+            <div className="a-panel a-up" style={{ animationDelay: "160ms" }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: A.white, marginBottom: 4 }}>Contas — atenção</div>
+              <div style={{ fontSize: 11, color: A.muted, marginBottom: 18 }}>Ações operacionais recomendadas</div>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap: 20 }}>
                 {attention.blocked.length > 0 && (
                   <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 9 }}>
-                      <Ban size={11} color={P.red} />
-                      <span style={{ fontSize: 10, fontWeight: 800, color: P.red, textTransform: "uppercase", letterSpacing: "0.10em" }}>Bloqueadas ({attention.blocked.length})</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                      <Ban size={11} color={A.red} />
+                      <span style={{ fontSize: 10, fontWeight: 800, color: A.red, textTransform: "uppercase", letterSpacing: "0.10em" }}>Bloqueadas ({attention.blocked.length})</span>
                     </div>
                     {attention.blocked.map(u => (
-                      <div key={u.id} className="d-attn-row">
-                        <div style={{ fontSize: 12, fontWeight: 700, color: P.white, marginBottom: 2 }}>{u.name || "Sem nome"}</div>
-                        <div style={{ fontSize: 10, color: P.muted }}>{u.email}</div>
+                      <div key={u.id} className="dash-attn">
+                        <div style={{ fontSize: 12, fontWeight: 700, color: A.white, marginBottom: 1 }}>{u.name || "—"}</div>
+                        <div style={{ fontSize: 10, color: A.muted }}>{u.email}</div>
                       </div>
                     ))}
                   </div>
                 )}
                 {attention.kycPending.length > 0 && (
                   <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 9 }}>
-                      <Clock size={11} color={P.amber} />
-                      <span style={{ fontSize: 10, fontWeight: 800, color: P.amber, textTransform: "uppercase", letterSpacing: "0.10em" }}>KYC Pendente ({attention.kycPending.length})</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                      <Clock size={11} color={A.amber} />
+                      <span style={{ fontSize: 10, fontWeight: 800, color: A.amber, textTransform: "uppercase", letterSpacing: "0.10em" }}>KYC Pendente ({attention.kycPending.length})</span>
                     </div>
                     {attention.kycPending.map(u => (
-                      <div key={u.id} className="d-attn-row">
+                      <div key={u.id} className="dash-attn">
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                           <div>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: P.white, marginBottom: 2 }}>{u.name || "Sem nome"}</div>
-                            <div style={{ fontSize: 10, color: P.muted }}>{u.email}</div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: A.white, marginBottom: 1 }}>{u.name || "—"}</div>
+                            <div style={{ fontSize: 10, color: A.muted }}>{u.email}</div>
                           </div>
-                          <span style={{ padding: "3px 8px", borderRadius: 999, background: "rgba(245,158,11,0.10)", color: P.amber, fontSize: 9, fontWeight: 800, whiteSpace: "nowrap" }}>
+                          <span style={{ padding: "2px 8px", borderRadius: 999, background: "rgba(245,158,11,0.10)", color: A.amber, fontSize: 9, fontWeight: 800, whiteSpace: "nowrap" }}>
                             {getAccountStatusLabel(u.accountStatus)}
                           </span>
                         </div>
@@ -742,14 +505,14 @@ export default function AdminDashboard({ isMobile }) {
                 )}
                 {attention.noTwoFA.length > 0 && (
                   <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 9 }}>
-                      <ShieldOff size={11} color={P.muted} />
-                      <span style={{ fontSize: 10, fontWeight: 800, color: P.muted, textTransform: "uppercase", letterSpacing: "0.10em" }}>Sem 2FA ({attention.noTwoFA.length})</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                      <ShieldOff size={11} color={A.muted} />
+                      <span style={{ fontSize: 10, fontWeight: 800, color: A.muted, textTransform: "uppercase", letterSpacing: "0.10em" }}>Sem 2FA ({attention.noTwoFA.length})</span>
                     </div>
                     {attention.noTwoFA.map(u => (
-                      <div key={u.id} className="d-attn-row">
-                        <div style={{ fontSize: 12, fontWeight: 700, color: P.white, marginBottom: 2 }}>{u.name || "Sem nome"}</div>
-                        <div style={{ fontSize: 10, color: P.muted }}>{u.email}</div>
+                      <div key={u.id} className="dash-attn">
+                        <div style={{ fontSize: 12, fontWeight: 700, color: A.white, marginBottom: 1 }}>{u.name || "—"}</div>
+                        <div style={{ fontSize: 10, color: A.muted }}>{u.email}</div>
                       </div>
                     ))}
                   </div>
